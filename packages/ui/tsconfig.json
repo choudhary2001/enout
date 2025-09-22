@@ -1,0 +1,11 @@
+{
+  "extends": "@enout/tsconfig/react-library.json",
+  "compilerOptions": {
+    "baseUrl": "./src",
+    "paths": {
+      "@ui/*": ["*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}
