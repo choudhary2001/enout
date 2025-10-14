@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { EventsService } from './events.service';
 
 @ApiTags('events')
-@Controller('events')
+@Controller('api/events')
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 

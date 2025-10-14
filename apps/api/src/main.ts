@@ -1,44 +1,47 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { ValidationPipe } from '@nestjs/common';
+import { configureSwagger } from './config/swagger.config';
+import { configureSecurityMiddleware } from './config/security.config';
+import { ApiLogger } from './common/logger/api-logger.service';
+import { AppConfig } from './config/app.config';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { abortOnError: false });
-  
-  // Enable shutdown hooks
-  app.enableShutdownHooks();
-  
-  // Enable CORS
-  app.enableCors();
-  
+  const app = await NestFactory.create(AppModule, {
+    logger: new ApiLogger(),
+  });
+
+  // Get configuration
+  const appConfig = app.get(AppConfig);
+
+  // Enable CORS FIRST (before security middleware)
+  app.enableCors({
+    origin: appConfig.corsOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  });
+
+  // Configure security middleware
+  configureSecurityMiddleware(app, appConfig);
+
   // Enable validation
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    transform: true,
-    forbidNonWhitelisted: true,
-  }));
-  
-  // Add global exception filter
-  app.useGlobalFilters(new HttpExceptionFilter());
-  
-  // Setup Swagger
-  const config = new DocumentBuilder()
-    .setTitle('Enout API')
-    .setDescription('The Enout API documentation')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document);
-  
+  app.useGlobalPipes(new ValidationPipe());
+
+  // Configure Swagger documentation
+  if (appConfig.nodeEnv === 'development') {
+    configureSwagger(app);
+  }
+
   // Start server
-  const port = process.env.PORT || 3001;
+  const port = appConfig.port || 3003;
   await app.listen(port);
-  // eslint-disable-next-line no-console
-  console.log(`Application is running on: http://localhost:${port}`);
-  console.log(`Swagger documentation available at: http://localhost:${port}/docs`);
+
+  const logger = new ApiLogger();
+  logger.log(`Application is running on: http://localhost:${port}`);
+  logger.log('Environment:', appConfig.nodeEnv);
+  logger.log('CORS origins:', appConfig.corsOrigins.join(', '));
+  logger.log('Rate limit:', JSON.stringify(appConfig.rateLimit));
 }
 
 bootstrap();

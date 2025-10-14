@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailerService } from '../../common/utils/mailer.service';
 import { GuestsQueryDto, InviteImportDto, GuestDto } from './dto/invite.dto';
+import { CreateInviteDto } from './dto/create-invite.dto';
+import { UpdateInviteDto } from './dto/update-invite.dto';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -32,7 +34,10 @@ export class InvitesService {
     }
 
     const { page = 1, pageSize = 20, query: searchQuery, status, sort = 'newest' } = query;
-    const skip = (page - 1) * pageSize;
+    // Ensure page and pageSize are numbers
+    const pageNum = typeof page === 'string' ? parseInt(page, 10) : page;
+    const pageSizeNum = typeof pageSize === 'string' ? parseInt(pageSize, 10) : pageSize;
+    const skip = (pageNum - 1) * pageSizeNum;
 
     // Build where conditions for the search
     const whereConditions: Prisma.InviteWhereInput = { eventId };
@@ -66,7 +71,7 @@ export class InvitesService {
         },
       },
       skip,
-      take: pageSize,
+      take: pageSizeNum,
       orderBy: this.getSortOrder(sort),
     });
 
@@ -119,10 +124,10 @@ export class InvitesService {
 
     return {
       data: guests,
-      page,
-      pageSize,
+      page: pageNum,
+      pageSize: pageSizeNum,
       total,
-      totalPages: Math.ceil(total / pageSize),
+      totalPages: Math.ceil(total / pageSizeNum),
     };
   }
 
@@ -215,6 +220,189 @@ export class InvitesService {
   async resendInvite(eventId: string, inviteId: string): Promise<{ sent: boolean }> {
     // This is the same as sendInvite for now
     return this.sendInvite(eventId, inviteId);
+  }
+
+  /**
+   * Create a single invite for an event
+   */
+  async createInvite(eventId: string, dto: CreateInviteDto): Promise<GuestDto> {
+    // Verify event exists
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+    });
+
+    if (!event) {
+      throw new NotFoundException(`Event with ID ${eventId} not found`);
+    }
+
+    // Check if email already exists for this event
+    const existingInvite = await this.prisma.invite.findUnique({
+      where: {
+        eventId_email: {
+          eventId,
+          email: dto.email,
+        },
+      },
+    });
+
+    if (existingInvite) {
+      throw new ConflictException(`Email ${dto.email} already exists for this event`);
+    }
+
+    // Create the invite
+    const invite = await this.prisma.invite.create({
+      data: {
+        eventId,
+        email: dto.email,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        countryCode: dto.countryCode,
+        phone: dto.phone,
+        status: 'pending',
+      },
+      include: {
+        event: {
+          select: {
+            attendees: {
+              where: {
+                email: dto.email,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Convert to GuestDto format
+    return this.mapInviteToGuestDto(invite);
+  }
+
+  /**
+   * Update an invite
+   */
+  async updateInvite(eventId: string, inviteId: string, dto: UpdateInviteDto): Promise<GuestDto> {
+    // Verify event exists
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+    });
+
+    if (!event) {
+      throw new NotFoundException(`Event with ID ${eventId} not found`);
+    }
+
+    // Verify invite exists
+    const existingInvite = await this.prisma.invite.findUnique({
+      where: { id: inviteId },
+    });
+
+    if (!existingInvite) {
+      throw new NotFoundException(`Invite with ID ${inviteId} not found`);
+    }
+
+    // If email is being updated, check for conflicts
+    if (dto.email && dto.email !== existingInvite.email) {
+      const emailConflict = await this.prisma.invite.findUnique({
+        where: {
+          eventId_email: {
+            eventId,
+            email: dto.email,
+          },
+        },
+      });
+
+      if (emailConflict) {
+        throw new ConflictException(`Email ${dto.email} already exists for this event`);
+      }
+    }
+
+    // Update the invite
+    const updatedInvite = await this.prisma.invite.update({
+      where: { id: inviteId },
+      data: {
+        email: dto.email,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        countryCode: dto.countryCode,
+        phone: dto.phone,
+      },
+      include: {
+        event: {
+          select: {
+            attendees: {
+              where: {
+                email: dto.email || existingInvite.email,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Convert to GuestDto format
+    return this.mapInviteToGuestDto(updatedInvite);
+  }
+
+  /**
+   * Delete an invite
+   */
+  async deleteInvite(eventId: string, inviteId: string): Promise<void> {
+    // Verify event exists
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+    });
+
+    if (!event) {
+      throw new NotFoundException(`Event with ID ${eventId} not found`);
+    }
+
+    // Verify invite exists
+    const invite = await this.prisma.invite.findUnique({
+      where: { id: inviteId },
+    });
+
+    if (!invite) {
+      throw new NotFoundException(`Invite with ID ${inviteId} not found`);
+    }
+
+    // Delete the invite (related attendee will be handled by cascade if needed)
+    await this.prisma.invite.delete({
+      where: { id: inviteId },
+    });
+  }
+
+  /**
+   * Map invite to GuestDto format
+   */
+  private mapInviteToGuestDto(invite: any): GuestDto {
+    const attendee = invite.event?.attendees?.[0];
+    
+    // Determine derived status
+    let derivedStatus = 'not_invited';
+    if (invite.status === 'sent' && invite.lastSentAt) {
+      derivedStatus = 'invited';
+    }
+    if (attendee?.phoneVerified) {
+      derivedStatus = 'email_verified';
+    }
+    if (attendee?.acceptedAt) {
+      derivedStatus = 'accepted';
+    }
+    if (attendee?.id) {
+      derivedStatus = 'registered';
+    }
+
+    return {
+      id: invite.id,
+      email: invite.email,
+      firstName: invite.firstName,
+      lastName: invite.lastName,
+      phone: invite.phone,
+      countryCode: invite.countryCode,
+      derivedStatus,
+      createdAt: invite.createdAt,
+      lastSentAt: invite.lastSentAt,
+      acceptedAt: attendee?.acceptedAt,
+    };
   }
 
   /**

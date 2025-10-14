@@ -99,8 +99,13 @@ model Attendee {
   lastName     String
   phone        String?
   city         String?
-  mealPref     String?
+  // Renamed from mealPref for clarity
+  dietaryRequirements String?
   drinkPref    String?
+  // New fields for mobile registration form
+  workEmail    String?
+  location     String?
+  gender       String?
   acceptedAt   DateTime?
   tasksJson    Json      @default("{}")
   idDocUrl     String?
@@ -193,4 +198,38 @@ model MobileMessage {
 
   @@index([eventId, createdAt])
   @@map("mobile_messages")
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         AdminRole @default(ADMIN)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  refreshTokens RefreshToken[]
+
+  @@map("admins")
+}
+
+enum AdminRole {
+  ADMIN
+  SUPER_ADMIN
+
+  @@map("admin_roles")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  adminId   String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@map("refresh_tokens")
 }

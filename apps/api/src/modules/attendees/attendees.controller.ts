@@ -5,7 +5,7 @@ import { AttendeeDto, AttendeesResponseDto } from './dto/attendee.dto';
 import { ApiErrorResponse } from '../../common/dto/api-response.dto';
 
 @ApiTags('attendees')
-@Controller('events/:eventId/attendees')
+@Controller('api/events/:eventId/attendees')
 export class AttendeesController {
   constructor(private readonly attendeesService: AttendeesService) {}
 

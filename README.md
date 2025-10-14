@@ -1,85 +1,188 @@
-# Enout App Monorepo
+# Enout Event Management App
 
-## Dev Quickstart
+A comprehensive event management application built with modern web technologies.
+
+## 🏗️ Architecture
+
+This is a monorepo containing:
+
+- **Admin Dashboard** (`apps/admin/`) - Next.js React app for event management
+- **API Server** (`apps/api/`) - NestJS backend with Prisma ORM
+- **Mobile App** (`apps/mobile/`) - React Native/Expo mobile application
+- **Shared Packages** (`packages/`) - Common utilities and UI components
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js 18+ 
+- pnpm (recommended) or npm
+- PostgreSQL database
+- Redis (optional, for caching)
+
+### Installation
 
 ```bash
 # Install dependencies
 pnpm install
 
-# Start all apps in parallel
-pnpm dev
+# Set up environment variables
+cp apps/api/.env.example apps/api/.env
+cp apps/admin/.env.example apps/admin/.env
 
-# Access the applications:
-# - Admin: http://localhost:3000
-# - API: http://localhost:3001/health
-# - Mobile: Expo interface will open automatically
-```
-
-## Getting Started
-
-### Installation
-
-```bash
-pnpm install
+# Set up database
+cd apps/api
+pnpm prisma:generate
+pnpm prisma:push
+pnpm prisma:seed
 ```
 
 ### Development
 
 ```bash
-# Start all apps
+# Start API server (port 3006)
+pnpm --filter @enout/api dev
+
+# Start admin dashboard (port 3000)
+pnpm --filter @enout/admin dev
+
+# Start mobile app
+pnpm --filter enout-mobile start
+```
+
+## 📱 Features
+
+### Admin Dashboard
+- Event management (create, edit, delete events)
+- Guest management with bulk actions
+- Rooming plan and room assignments
+- Message broadcasting system with drafts
+- Schedule management
+- Real-time updates
+
+### API Features
+- RESTful API with NestJS
+- Authentication and authorization
+- Database management with Prisma
+- Rate limiting and security
+- Comprehensive error handling
+
+### Mobile App
+- Cross-platform (iOS/Android/Web)
+- Event browsing and details
+- Guest check-in functionality
+- Real-time notifications
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Next.js, React, TypeScript, Tailwind CSS
+- **Backend**: NestJS, Prisma, PostgreSQL
+- **Mobile**: React Native, Expo
+- **State Management**: Zustand, React Query
+- **UI Components**: Custom components with Tailwind
+- **Package Manager**: pnpm with workspaces
+
+## 📁 Project Structure
+
+```
+├── apps/
+│   ├── admin/          # Next.js admin dashboard
+│   ├── api/            # NestJS API server
+│   └── mobile/         # React Native mobile app
+├── packages/
+│   ├── shared/         # Shared types and utilities
+│   ├── ui/             # Reusable UI components
+│   └── eslint-config/  # ESLint configurations
+└── infra/              # Infrastructure and deployment
+```
+
+## 🔧 Available Scripts
+
+```bash
+# Install dependencies
+pnpm install
+
+# Start all services in development
 pnpm dev
 
-# Start specific app
-pnpm --filter @enout/admin dev  # Admin app (http://localhost:3000)
-pnpm --filter @enout/api dev    # API (http://localhost:3001)
-pnpm --filter @enout/mobile dev  # Mobile app (Expo)
-```
-
-### Build
-
-```bash
+# Build all applications
 pnpm build
+
+# Run tests
+pnpm test
+
+# Database operations
+pnpm prisma:generate
+pnpm prisma:push
+pnpm prisma:seed
 ```
 
-### Lint and Typecheck
+## 🌐 API Endpoints
 
-```bash
-pnpm lint
-pnpm typecheck
+- **Events**: `/api/events`
+- **Guests**: `/api/events/:id/invites`
+- **Messages**: `/api/events/:id/messages`
+- **Schedule**: `/api/events/:id/schedule`
+- **Rooms**: `/api/events/:id/rooms`
+
+## 📝 Environment Variables
+
+### API (.env)
+```
+DATABASE_URL="postgresql://..."
+JWT_SECRET="your-secret"
+PORT=3006
+RATE_LIMIT_ENABLED=false
 ```
 
-### Local DB/Redis
-
-The project uses PostgreSQL and Redis for local development. You can start these services using Docker Compose:
-
-```bash
-# Start PostgreSQL and Redis
-docker compose -f infra/docker/docker-compose.dev.yml up -d
-
-# Check services status
-docker compose -f infra/docker/docker-compose.dev.yml ps
-
-# Stop services
-docker compose -f infra/docker/docker-compose.dev.yml down
+### Admin (.env)
+```
+NEXT_PUBLIC_API_URL="http://localhost:3006"
 ```
 
-### Database Setup
+## 🎯 Current Status
 
-**Important**: You must create a .env file before running any database operations.
+- ✅ Admin dashboard with full CRUD operations
+- ✅ API server with comprehensive endpoints
+- ✅ Mobile app with basic functionality
+- ✅ Database schema and seeding
+- ✅ Authentication system
+- ✅ Real-time features
+- ✅ Message system with drafts
+- ✅ Room management
+- ✅ Guest management with bulk actions
+- 🔄 Testing and documentation (in progress)
 
-```bash
-# Create a .env file from the example (required)
-cp .env.example .env
+## 🤝 Contributing
 
-# Prisma requires .env file next to the schema
-cp infra/prisma/.env.example infra/prisma/.env
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
-# Generate Prisma client
-pnpm --filter @enout/api prisma:generate
+## 📄 License
 
-# Run migrations
-pnpm --filter @enout/api prisma:migrate
+This project is licensed under the MIT License.
 
-# Seed the database
-pnpm --filter @enout/api db:seed
-```
+## 🆘 Getting Help
+
+If you need help with this project:
+
+1. Check the issues section
+2. Review the code comments
+3. Contact the maintainers
+
+## 🔧 Development Notes
+
+### Recent Updates
+- Fixed rate limiting issues (disabled for development)
+- Implemented 3-tab message system (Sent, Drafts, Send Message)
+- Added comprehensive error handling
+- Improved API client with retry logic
+- Enhanced UI components and layouts
+
+### Known Issues
+- Room API endpoints need backend implementation
+- Some mobile features still in development
+- Rate limiting disabled for development (should be configured for production)

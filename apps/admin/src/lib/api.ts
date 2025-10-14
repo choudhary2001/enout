@@ -1,115 +1,201 @@
-import { z } from 'zod';
+/**
+ * API service layer for admin dashboard
+ */
+
+import { env } from './env';
+import { apiClient } from './api-client';
+import { 
+  EventType, 
+  ItineraryItemType, 
+  AttendeeType, 
+  MessageType, 
+  RoomType,
+  UserType 
+} from '@enout/shared';
 
 /**
- * API client configuration
+ * Calculate event status based on dates
  */
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003';
-const DEFAULT_TIMEOUT = 10000; // 10 seconds
-
-/**
- * API error class
- */
-export class ApiError extends Error {
-  status: number;
+export function calculateEventStatus(startDate: string, endDate: string): 'pending' | 'in_progress' | 'complete' {
+  const now = new Date();
+  const start = new Date(startDate);
+  const end = new Date(endDate);
   
-  constructor(message: string, status: number) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-  }
+  if (now < start) return 'pending';
+  if (now > end) return 'complete';
+  return 'in_progress';
 }
 
 /**
- * Fetch options with timeout
+ * API service
  */
-interface FetchOptions extends RequestInit {
-  timeout?: number;
-}
+export const api = {
+  // Events
+  async getEvents(): Promise<EventType[]> {
+    console.log('API: getEvents called');
+    try {
+      const result = await apiClient.get<EventType[]>('/api/admin/events');
+      console.log('API: getEvents success', result.length, 'events');
+      return result;
+    } catch (error) {
+      console.error('API: getEvents error', error);
+      throw error;
+    }
+  },
 
-/**
- * Fetch with timeout
- */
-async function fetchWithTimeout(url: string, options: FetchOptions = {}): Promise<Response> {
-  const { timeout = DEFAULT_TIMEOUT, ...fetchOptions } = options;
-  
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-  
-  try {
-    const response = await fetch(url, {
-      ...fetchOptions,
-      signal: controller.signal,
+  async getEventById(id: string): Promise<EventType> {
+    return apiClient.get<EventType>(`/api/events/${id}`);
+  },
+
+  async createEvent(data: Partial<EventType>): Promise<EventType> {
+    return apiClient.post<EventType>('/api/admin/events', data);
+  },
+
+  async updateEvent(id: string, data: Partial<EventType>): Promise<EventType> {
+    return apiClient.patch<EventType>(`/api/admin/events/${id}`, data);
+  },
+
+  async deleteEvent(id: string): Promise<void> {
+    return apiClient.del<void>(`/api/admin/events/${id}`);
+  },
+
+  // Schedule/Itinerary
+  async getSchedule(eventId: string): Promise<ItineraryItemType[]> {
+    const response = await apiClient.get<{ data: any[] }>(`/api/events/${eventId}/schedule`);
+    // Transform backend fields to frontend expected fields
+    return response.data.map(item => ({
+      ...item,
+      startTime: item.start,
+      endTime: item.end,
+    }));
+  },
+
+  async createScheduleItem(eventId: string, data: Partial<ItineraryItemType>): Promise<ItineraryItemType> {
+    // Transform frontend data to backend format
+    const backendData = {
+      title: data.title,
+      location: data.location,
+      notes: data.notes || data.description,
+      color: data.color,
+      allDay: data.allDay || false,
+      start: data.startTime ? new Date(data.startTime).toISOString() : undefined,
+      end: data.endTime ? new Date(data.endTime).toISOString() : undefined,
+    };
+    
+    return apiClient.post<ItineraryItemType>(`/api/events/${eventId}/schedule`, backendData);
+  },
+
+  async updateScheduleItem(eventId: string, itemId: string, data: Partial<ItineraryItemType>): Promise<ItineraryItemType> {
+    // Transform frontend data to backend format
+    const backendData: any = {
+      title: data.title,
+      location: data.location,
+      notes: data.notes || data.description,
+      color: data.color,
+      allDay: data.allDay,
+    };
+    
+    // Only include start/end if they exist
+    if (data.startTime) {
+      backendData.start = new Date(data.startTime).toISOString();
+    }
+    if (data.endTime) {
+      backendData.end = new Date(data.endTime).toISOString();
+    }
+    
+    return apiClient.patch<ItineraryItemType>(`/api/events/${eventId}/schedule/${itemId}`, backendData);
+  },
+
+  async deleteScheduleItem(eventId: string, itemId: string): Promise<void> {
+    return apiClient.del<void>(`/api/events/${eventId}/schedule/${itemId}`);
+  },
+
+  // Guests/Attendees
+  async getGuests(eventId: string, filters?: any): Promise<AttendeeType[]> {
+    return apiClient.get<AttendeeType[]>(`/api/events/${eventId}/invites`, { query: filters });
+  },
+
+  async getGuestById(eventId: string, guestId: string): Promise<AttendeeType> {
+    return apiClient.get<AttendeeType>(`/api/events/${eventId}/invites/${guestId}`);
+  },
+
+  async createGuest(eventId: string, data: Partial<AttendeeType>): Promise<AttendeeType> {
+    return apiClient.post<AttendeeType>(`/api/events/${eventId}/invites`, data);
+  },
+
+  async updateGuest(eventId: string, guestId: string, data: Partial<AttendeeType>): Promise<AttendeeType> {
+    return apiClient.patch<AttendeeType>(`/api/events/${eventId}/invites/${guestId}`, data);
+  },
+
+  async deleteGuest(eventId: string, guestId: string): Promise<void> {
+    return apiClient.del<void>(`/api/events/${eventId}/invites/${guestId}`);
+  },
+
+  async importGuests(eventId: string, file: File): Promise<{ imported: number; failed: number }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${env.apiUrl}/api/events/${eventId}/invites/import`, {
+      method: 'POST',
+      body: formData,
     });
     
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new ApiError(
-        `API request failed: ${response.status} ${response.statusText} - ${errorText}`,
-        response.status
-      );
+      throw new Error(`Import failed: ${response.statusText}`);
     }
     
-    return response;
-  } catch (error) {
-    if (error instanceof ApiError) {
-      throw error;
-    }
-    
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new ApiError(`Request timed out after ${timeout}ms`, 408);
-    }
-    
-    throw new ApiError(`Request failed: ${(error as Error).message}`, 500);
-  } finally {
-    clearTimeout(id);
-  }
-}
-
-/**
- * API client
- */
-export const api = {
-  /**
-   * Make a GET request to the API
-   * @param path API path
-   * @param schema Zod schema to validate the response
-   * @param options Fetch options
-   * @returns Validated response data
-   */
-  async get<T>(path: string, schema: z.ZodType<T>, options: FetchOptions = {}): Promise<T> {
-    const url = `${API_BASE_URL}${path}`;
-    const response = await fetchWithTimeout(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      ...options,
-    });
-    
-    const data = await response.json();
-    return schema.parse(data);
+    return response.json();
   },
-  
-  /**
-   * Make a POST request to the API
-   * @param path API path
-   * @param body Request body
-   * @param schema Zod schema to validate the response
-   * @param options Fetch options
-   * @returns Validated response data
-   */
-  async post<T>(path: string, body: unknown, schema: z.ZodType<T>, options: FetchOptions = {}): Promise<T> {
-    const url = `${API_BASE_URL}${path}`;
-    const response = await fetchWithTimeout(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-      ...options,
-    });
-    
-    const data = await response.json();
-    return schema.parse(data);
+
+  // Messages
+  async getMessages(eventId: string): Promise<MessageType[]> {
+    const response = await apiClient.get<{ data: MessageType[] }>(`/api/events/${eventId}/messages`);
+    return response.data || [];
+  },
+
+  async createMessage(eventId: string, data: any): Promise<MessageType> {
+    return apiClient.post<MessageType>(`/api/events/${eventId}/messages`, data);
+  },
+
+  async sendMessage(eventId: string, data: { content: string; recipients: string[] }): Promise<MessageType> {
+    return apiClient.post<MessageType>(`/api/events/${eventId}/messages`, data);
+  },
+
+  async updateMessage(eventId: string, messageId: string, data: any): Promise<MessageType> {
+    return apiClient.patch<MessageType>(`/api/events/${eventId}/messages/${messageId}`, data);
+  },
+
+  async deleteMessage(eventId: string, messageId: string): Promise<void> {
+    return apiClient.del<void>(`/api/events/${eventId}/messages/${messageId}`);
+  },
+
+  // Rooms
+  async getRooms(eventId: string): Promise<RoomType[]> {
+    return apiClient.get<RoomType[]>(`/api/events/${eventId}/rooms`);
+  },
+
+  async createRoom(eventId: string, data: Partial<RoomType>): Promise<RoomType> {
+    return apiClient.post<RoomType>(`/api/events/${eventId}/rooms`, data);
+  },
+
+  async updateRoom(eventId: string, roomId: string, data: Partial<RoomType>): Promise<RoomType> {
+    return apiClient.patch<RoomType>(`/api/events/${eventId}/rooms/${roomId}`, data);
+  },
+
+  async deleteRoom(eventId: string, roomId: string): Promise<void> {
+    return apiClient.del<void>(`/api/events/${eventId}/rooms/${roomId}`);
+  },
+
+  async assignGuestToRoom(eventId: string, guestId: string, roomId: string): Promise<void> {
+    return apiClient.post<void>(`/api/events/${eventId}/rooms/${roomId}/assign`, { guestId });
+  },
+
+  async unassignGuestFromRoom(eventId: string, guestId: string, roomId: string): Promise<void> {
+    return apiClient.post<void>(`/api/events/${eventId}/rooms/${roomId}/unassign`, { guestId });
+  },
+
+  // User
+  async getCurrentUser(): Promise<UserType> {
+    return apiClient.get<UserType>('/api/user');
   },
 };

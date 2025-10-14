@@ -1,23 +1,19 @@
 import { Module } from '@nestjs/common';
-import { AuthController } from './auth.controller';
+import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
-import { PrismaModule } from '../../prisma/prisma.module';
-import { ConfigModule } from '@nestjs/config';
-import { RedisService } from '../../common/utils/redis.service';
-import { MailerService } from '../../common/utils/mailer.service';
-import { RateLimiterService } from '../../common/utils/rate-limiter.util';
-import { JwtService } from '../../common/utils/jwt.service';
+import { AuthController } from './auth.controller';
+import { PrismaModule } from '@/prisma/prisma.module';
 
 @Module({
-  imports: [PrismaModule, ConfigModule],
-  controllers: [AuthController],
-  providers: [
-    AuthService,
-    RedisService,
-    MailerService,
-    RateLimiterService,
-    JwtService,
+  imports: [
+    PrismaModule,
+    JwtModule.register({
+      secret: process.env.JWT_SECRET || 'your-jwt-secret-key',
+      signOptions: { expiresIn: '1d' },
+    }),
   ],
-  exports: [AuthService, JwtService],
+  controllers: [AuthController],
+  providers: [AuthService],
+  exports: [AuthService],
 })
 export class AuthModule {}
