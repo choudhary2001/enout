@@ -48,6 +48,12 @@ pnpm --filter @enout/admin dev
 
 # Start mobile app
 pnpm --filter enout-mobile start
+
+# Start mobile app on web
+cd /Users/tanmaymanocha/New_Enout_App/temp-mobile
+npx expo start --web
+
+
 ```
 
 ## 📱 Features
