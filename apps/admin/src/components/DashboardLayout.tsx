@@ -17,7 +17,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { selectedEventId, selectedEvent, setSelectedEventId, setSelectedEvent } = useEventStore();
-  const { events, isLoading, error } = useEvents();
+  const { events } = useEvents();
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const pathname = usePathname();
@@ -130,10 +130,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const completedEvents = filteredEvents.filter(e => e.status === 'complete');
   const activeEvents = filteredEvents.filter(e => e.status !== 'complete');
   
-  // Debug logging
-  console.log('DashboardLayout - filteredEvents:', filteredEvents.length);
-  console.log('DashboardLayout - activeEvents:', activeEvents.length);
-  console.log('DashboardLayout - completedEvents:', completedEvents.length);
+  // Events filtered and categorized
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -307,7 +304,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col">
         {children}
       </div>
 

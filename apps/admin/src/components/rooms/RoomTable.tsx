@@ -280,6 +280,7 @@ export function RoomTable({ rooms, eligibleAttendees, eventId, isLoading }: Room
               )}
               eligibleAttendees={eligibleAttendees}
               eventId={eventId}
+              rooms={rooms}
             />
           </div>
         </div>
@@ -305,7 +306,7 @@ interface GuestCellProps {
   isDisabled: boolean;
 }
 
-function GuestCell({ room, slot, attendee, isActive, onActivate, onAssign, isDisabled }: GuestCellProps) {
+function GuestCell({ room: _room, slot: _slot, attendee, isActive, onActivate, onAssign, isDisabled }: GuestCellProps) {
   if (isDisabled) {
     return (
       <div className="text-gray-400 text-sm">
@@ -318,6 +319,12 @@ function GuestCell({ room, slot, attendee, isActive, onActivate, onAssign, isDis
     <div className="relative">
       <button
         onClick={onActivate}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onActivate();
+          }
+        }}
         className={cn(
           'w-full text-left p-2 rounded-lg border transition-colors',
           attendee

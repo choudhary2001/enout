@@ -1,15 +1,27 @@
 'use client';
 
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { MessageComposer } from '@/components/MessageComposer';
 import { SentMessages } from '@/components/messages/SentMessages';
 import { DraftMessages } from '@/components/messages/DraftMessages';
+import { api } from '@/lib/api';
 
 type MessageTab = 'sent' | 'drafts' | 'compose';
 
 export default function MessagesPage({ params }: { params: { id: string } }) {
   const [activeTab, setActiveTab] = useState<MessageTab>('sent');
   const [editingDraft, setEditingDraft] = useState<any>(null);
+
+  // Fetch all messages to calculate counts
+  const { data: messages = [] } = useQuery({
+    queryKey: ['messages', params.id],
+    queryFn: () => api.getMessages(params.id),
+  });
+
+  // Calculate counts
+  const sentCount = messages.filter((msg: any) => msg.status === 'sent').length;
+  const draftsCount = messages.filter((msg: any) => msg.status === 'draft').length;
 
   const handleDraftClick = (draft: any) => {
     setEditingDraft(draft);
@@ -21,13 +33,13 @@ export default function MessagesPage({ params }: { params: { id: string } }) {
   };
 
   const tabs = [
-    { id: 'sent' as MessageTab, label: 'Sent', count: 0 },
-    { id: 'drafts' as MessageTab, label: 'Drafts', count: 0 },
+    { id: 'sent' as MessageTab, label: 'Sent', count: sentCount },
+    { id: 'drafts' as MessageTab, label: 'Drafts', count: draftsCount },
     { id: 'compose' as MessageTab, label: 'Send Message', count: null },
   ];
 
   return (
-    <div className="p-6 h-full flex flex-col">
+    <div className="p-6 min-h-full">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
         <p className="text-gray-600">Manage event communications</p>
@@ -61,7 +73,7 @@ export default function MessagesPage({ params }: { params: { id: string } }) {
         </nav>
       </div>
 
-      <div className="flex-1">
+      <div className="pb-6">
         {activeTab === 'sent' && (
           <SentMessages eventId={params.id} />
         )}

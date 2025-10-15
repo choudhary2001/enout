@@ -12,6 +12,7 @@ interface GuestCellPickerProps {
   currentAttendee: AttendeeLite | null;
   eligibleAttendees: AttendeeLite[];
   eventId: string;
+  rooms: any[]; // Add rooms to check for already assigned guests
 }
 
 export function GuestCellPicker({
@@ -20,14 +21,35 @@ export function GuestCellPicker({
   onSelect,
   currentAttendee,
   eligibleAttendees,
-  eventId,
+  eventId: _eventId,
+  rooms,
 }: GuestCellPickerProps) {
   const [search, setSearch] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const filteredAttendees = (Array.isArray(eligibleAttendees) ? eligibleAttendees : []).filter(attendee =>
+  // Get all currently assigned attendee IDs from all rooms
+  const assignedAttendeeIds = new Set<string>();
+  rooms.forEach(room => {
+    room.assignments?.forEach((assignment: any) => {
+      if (assignment.attendeeId) {
+        assignedAttendeeIds.add(assignment.attendeeId);
+      }
+    });
+  });
+
+  // Filter attendees: exclude already assigned ones (except current attendee)
+  const availableAttendees = (Array.isArray(eligibleAttendees) ? eligibleAttendees : []).filter(attendee => {
+    // Always include the current attendee (for reassignment)
+    if (currentAttendee?.id === attendee.id) {
+      return true;
+    }
+    // Exclude all other assigned attendees
+    return !assignedAttendeeIds.has(attendee.id);
+  });
+
+  const filteredAttendees = availableAttendees.filter(attendee =>
     attendee.firstName?.toLowerCase().includes(search.toLowerCase()) ||
     attendee.lastName?.toLowerCase().includes(search.toLowerCase()) ||
     attendee.email.toLowerCase().includes(search.toLowerCase())
@@ -112,7 +134,10 @@ export function GuestCellPicker({
 
         {filteredAttendees.length === 0 ? (
           <div className="p-4 text-center text-gray-500 text-sm">
-            No attendees found
+            {availableAttendees.length === 0 
+              ? "All guests are already assigned to rooms" 
+              : "No attendees found matching your search"
+            }
           </div>
         ) : (
           filteredAttendees.map((attendee, index) => (
@@ -140,9 +165,9 @@ export function GuestCellPicker({
                 <div className="text-xs text-gray-500 truncate">
                   {attendee.email}
                 </div>
-                {attendee.assigned && (
-                  <div className="text-xs text-amber-600">
-                    Assigned to Room {attendee.assigned.roomNo}
+                {currentAttendee?.id === attendee.id && (
+                  <div className="text-xs text-blue-600">
+                    Currently assigned to this slot
                   </div>
                 )}
               </div>

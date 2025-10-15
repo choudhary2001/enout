@@ -7,12 +7,10 @@ import {
   Delete,
   Put,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { MessagesService } from './messages.service';
 import { MessageDto, MessagesResponseDto } from './dto/message.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('Messages')
 @Controller('api/events/:eventId/messages')
@@ -42,6 +40,7 @@ export class MessagesController {
         title: msg.title,
         body: msg.body,
         attachments: msg.attachments,
+        status: msg.status,
         unread: msg.unread,
         createdAt: msg.createdAt,
       })),
@@ -104,6 +103,7 @@ export class MessagesController {
       title: message.title,
       body: message.body,
       attachments: message.attachments,
+      status: message.status,
       unread: message.unread,
       createdAt: message.createdAt,
     };

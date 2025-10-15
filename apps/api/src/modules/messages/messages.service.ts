@@ -32,6 +32,7 @@ export class MessagesService {
         body: data.body,
         attachments: data.attachments,
         attendeeId: data.attendeeId,
+        status: data.status || 'sent',
       },
     });
   }

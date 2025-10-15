@@ -19,6 +19,9 @@ export class MessageDto {
   @ApiPropertyOptional({ description: 'Message attachments' })
   attachments?: any;
 
+  @ApiProperty({ description: 'Message status' })
+  status: string;
+
   @ApiProperty({ description: 'Unread status' })
   unread: boolean;
 

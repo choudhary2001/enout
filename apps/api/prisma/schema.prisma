@@ -205,6 +205,7 @@ model MobileMessage {
   title      String
   body       String
   attachments Json?
+  status     String   @default("sent") // "sent", "draft", "scheduled"
   unread     Boolean  @default(true)
   createdAt  DateTime @default(now())
 

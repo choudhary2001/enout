@@ -29,6 +29,7 @@ interface MessageComposerProps {
 export function MessageComposer({ eventId, editingDraft, onDraftSaved }: MessageComposerProps) {
   const queryClient = useQueryClient();
   const [isScheduling, setIsScheduling] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
 
   const { data: messages = [] } = useQuery({
     queryKey: ['messages', eventId],
@@ -84,6 +85,7 @@ export function MessageComposer({ eventId, editingDraft, onDraftSaved }: Message
       });
       reset();
       setIsScheduling(false);
+      clearAttachments();
       onDraftSaved?.();
     },
     onError: () => {
@@ -105,6 +107,7 @@ export function MessageComposer({ eventId, editingDraft, onDraftSaved }: Message
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['messages', eventId] });
       onDraftSaved?.();
+      clearAttachments();
       toast({
         title: 'Draft saved',
         description: 'Your message has been saved as a draft.',
@@ -120,17 +123,61 @@ export function MessageComposer({ eventId, editingDraft, onDraftSaved }: Message
   });
 
   const onSubmit = (data: MessageForm) => {
-    createMessageMutation.mutate(data);
+    const messageData = {
+      ...data,
+      attachments: attachments.map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        // In a real app, you'd upload the file and get a URL
+        url: URL.createObjectURL(file)
+      }))
+    };
+    createMessageMutation.mutate(messageData);
   };
 
   const onSaveDraft = (data: MessageForm) => {
-    saveDraftMutation.mutate(data);
+    const messageData = {
+      ...data,
+      attachments: attachments.map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        // In a real app, you'd upload the file and get a URL
+        url: URL.createObjectURL(file)
+      }))
+    };
+    saveDraftMutation.mutate(messageData);
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      const newFiles = Array.from(files);
+      setAttachments(prev => [...prev, ...newFiles]);
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const clearAttachments = () => {
+    setAttachments([]);
   };
 
   const _audience = watch('audience');
 
   return (
-    <div className="p-6">
+    <div>
       {/* Composer */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Compose Message</h2>
@@ -188,14 +235,23 @@ export function MessageComposer({ eventId, editingDraft, onDraftSaved }: Message
               <label htmlFor="attachments" className="block text-sm font-medium text-gray-700 mb-1">
                 Attachments
               </label>
-              <button
-                id="attachments"
-                type="button"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
-              >
-                <Paperclip className="h-4 w-4" />
-                Add Files
-              </button>
+              <div className="relative">
+                <input
+                  id="attachments"
+                  type="file"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.zip,.rar"
+                />
+                <button
+                  type="button"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+                >
+                  <Paperclip className="h-4 w-4" />
+                  Add Files
+                </button>
+              </div>
             </div>
           </div>
 
@@ -244,6 +300,42 @@ export function MessageComposer({ eventId, editingDraft, onDraftSaved }: Message
           </div>
         </form>
       </div>
+
+      {/* Attachments List */}
+      {attachments.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Attachments ({attachments.length})</h3>
+            <button
+              type="button"
+              onClick={clearAttachments}
+              className="text-sm text-red-600 hover:text-red-800 font-medium"
+            >
+              Clear All
+            </button>
+          </div>
+          <div className="space-y-3">
+            {attachments.map((file, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Paperclip className="h-4 w-4 text-gray-500" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                    <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeAttachment(index)}
+                  className="text-red-600 hover:text-red-800 text-sm font-medium"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Message History */}
       <div className="space-y-4">

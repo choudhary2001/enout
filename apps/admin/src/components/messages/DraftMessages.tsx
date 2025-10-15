@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { format } from 'date-fns';
-import { Edit, Trash2, Mail, Users, Clock } from 'lucide-react';
+import { Edit, Trash2, Users, Clock } from 'lucide-react';
 import { useState } from 'react';
 
 interface DraftMessagesProps {
@@ -15,7 +15,7 @@ export function DraftMessages({ eventId, onDraftClick }: DraftMessagesProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const { data: messages = [], isLoading, error } = useQuery({
-    queryKey: ['messages', eventId, 'drafts'],
+    queryKey: ['messages', eventId],
     queryFn: () => api.getMessages(eventId),
     select: (data) => data.filter((msg: any) => msg.status === 'draft'),
   });
