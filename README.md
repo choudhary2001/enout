@@ -50,7 +50,7 @@ pnpm --filter @enout/admin dev
 pnpm --filter enout-mobile start
 
 # Start mobile app on web
-cd /Users/tanmaymanocha/New_Enout_App/temp-mobile
+cd mobile
 npx expo start --web
 
 
