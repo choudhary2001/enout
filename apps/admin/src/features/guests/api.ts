@@ -3,7 +3,7 @@
  */
 
 import { Guest, PaginatedGuests, InviteRow, GuestFilters } from './types';
-import { env } from '@/lib/env';
+// import { env } from '@/lib/env';
 import { apiClient, ApiClientError } from '@/lib/api-client';
 
 /**
@@ -11,7 +11,7 @@ import { apiClient, ApiClientError } from '@/lib/api-client';
  */
 async function handleApiError(error: any, operation: string): Promise<never> {
   console.error(`API Error in ${operation}:`, error);
-  
+
   if (error instanceof ApiClientError && (error.status >= 500 || error.status === 0)) {
     // Show error toast
     if (typeof window !== 'undefined') {
@@ -23,7 +23,7 @@ async function handleApiError(error: any, operation: string): Promise<never> {
       });
     }
   }
-  
+
   throw error;
 }
 
@@ -37,14 +37,24 @@ export const guestsApi = {
         page: filters.page || 1,
         pageSize: filters.pageSize || 20,
       };
-      
-      if (filters.q) queryParams.q = filters.q;
+
+      if (filters.q) queryParams.query = filters.q;  // Backend expects 'query' not 'q'
       if (filters.status && filters.status.length > 0) queryParams.status = filters.status.join(',');
-      if (filters.sort) queryParams.sort = filters.sort;
-      
+      if (filters.sort) {
+        // Map frontend sort values to backend sort values
+        const sortMap: Record<string, string> = {
+          'newest': 'newest',
+          'oldest': 'oldest',
+          'name_asc': 'name',
+          'name_desc': 'name', // Both use 'name', backend decides asc/desc
+          'status': 'status'
+        };
+        queryParams.sort = sortMap[filters.sort] || 'newest';
+      }
+
       // Use invites endpoint which has both invited guests and attendees
       const response = await apiClient.get<any>(`/api/events/${eventId}/invites`, { query: queryParams });
-      
+
       // The API returns { data: [...], page, pageSize, total, totalPages }
       // Transform it to match PaginatedGuests if needed
       return {
@@ -68,9 +78,9 @@ export const guestsApi = {
         `/api/events/${eventId}/invites/import`,
         { rows: guests } // API expects 'rows' not 'guests'
       );
-      return { 
-        imported: response.count || 0, 
-        errors: [] 
+      return {
+        imported: response.count || 0,
+        errors: []
       };
     } catch (error) {
       return handleApiError(error, 'importGuests');

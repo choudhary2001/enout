@@ -1,16 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { 
-  IsArray, 
-  IsEmail, 
-  IsEnum, 
-  IsInt, 
-  IsNotEmpty, 
-  IsOptional, 
-  IsString, 
-  Max, 
-  Min, 
-  ValidateNested 
+import {
+  IsArray,
+  IsEmail,
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  ValidateNested
 } from 'class-validator';
 
 export class InviteRowDto {
@@ -53,8 +53,8 @@ export class GuestsQueryDto {
   @IsString()
   query?: string;
 
-  @ApiProperty({ 
-    required: false, 
+  @ApiProperty({
+    required: false,
     example: 'invited,email_verified',
     description: 'Comma-separated list of statuses to filter by'
   })
@@ -62,8 +62,8 @@ export class GuestsQueryDto {
   @IsString()
   status?: string;
 
-  @ApiProperty({ 
-    required: false, 
+  @ApiProperty({
+    required: false,
     enum: ['newest', 'oldest', 'name', 'status'],
     default: 'newest'
   })
@@ -78,11 +78,10 @@ export class GuestsQueryDto {
   @Type(() => Number)
   page?: number = 1;
 
-  @ApiProperty({ required: false, default: 20, maximum: 100 })
+  @ApiProperty({ required: false, default: 20 })
   @IsOptional()
   @IsInt()
   @Min(1)
-  @Max(100)
   @Type(() => Number)
   pageSize?: number = 20;
 }
@@ -117,6 +116,25 @@ export class GuestDto {
 
   @ApiProperty({ required: false })
   acceptedAt?: Date | null;
+
+  // NEW: Registration form fields
+  @ApiProperty({ required: false })
+  workEmail?: string | null;
+
+  @ApiProperty({ required: false })
+  location?: string | null;
+
+  @ApiProperty({ required: false })
+  gender?: string | null;
+
+  @ApiProperty({ required: false })
+  dietaryRequirements?: string | null;
+
+  @ApiProperty({ required: false })
+  idDocUrl?: string | null;
+
+  @ApiProperty({ required: false })
+  phoneVerified?: boolean;
 }
 
 export class GuestsResponseDto {

@@ -32,6 +32,7 @@ export function PhoneOtpForm({ control, errors, phoneNumber }: PhoneOtpFormProps
             <TextInput
               style={[styles.input, errors.code && styles.inputError]}
               placeholder="000000"
+              placeholderTextColor="#94a3b8"
               value={value}
               onChangeText={onChange}
               onBlur={onBlur}
@@ -47,7 +48,7 @@ export function PhoneOtpForm({ control, errors, phoneNumber }: PhoneOtpFormProps
       </View>
 
       <Text style={styles.hint}>
-        Tip: Use 654321 for testing
+        Enter the 6-digit code sent to your phone via SMS
       </Text>
     </View>
   );

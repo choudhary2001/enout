@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   useReactTable,
@@ -11,16 +11,19 @@ import {
   createColumnHelper,
   flexRender,
 } from '@tanstack/react-table';
+import { Eye } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { Guest, GuestFilters, statusColors } from '../types';
+import { Guest, GuestFilters, statusColors, PaginatedGuests } from '../types';
 import { guestsApi } from '../api';
 import { RowActions } from './RowActions';
 import { useCan } from '@/lib/useCan';
+import { AttendeeDetailsModal } from '@/components/guests/AttendeeDetailsModal';
 
 const columnHelper = createColumnHelper<Guest>();
 
 interface GuestTableProps {
   guests: Guest[];
+  guestsData?: PaginatedGuests | null;
   isLoading: boolean;
   selectedGuests: string[];
   onSelectionChange: (selected: string[]) => void;
@@ -40,6 +43,7 @@ function StatusBadge({ status }: { status: string }) {
 
 export function GuestTable({
   guests,
+  guestsData,
   isLoading,
   selectedGuests,
   onSelectionChange,
@@ -108,6 +112,9 @@ export function GuestTable({
     },
   });
 
+  const [selectedGuest, setSelectedGuest] = React.useState<Guest | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = React.useState(false);
+
   const columns = [
     columnHelper.display({
       id: 'select',
@@ -130,7 +137,7 @@ export function GuestTable({
           onChange={(e) => {
             row.toggleSelected(e.target.checked);
             const currentSelected = selectedGuests.filter(id => id !== row.original.id);
-            onSelectionChange(e.target.checked 
+            onSelectionChange(e.target.checked
               ? [...currentSelected, row.original.id]
               : currentSelected
             );
@@ -181,6 +188,22 @@ export function GuestTable({
     columnHelper.accessor('derivedStatus', {
       header: 'Status',
       cell: (info) => <StatusBadge status={info.getValue()} />,
+    }),
+    columnHelper.display({
+      id: 'details',
+      header: 'Details',
+      cell: ({ row }) => (
+        <button
+          onClick={() => {
+            setSelectedGuest(row.original);
+            setIsDetailsModalOpen(true);
+          }}
+          className="p-1 text-gray-400 hover:text-primary transition-colors"
+          title="View registration details"
+        >
+          <Eye className="h-4 w-4" />
+        </button>
+      ),
     }),
     columnHelper.display({
       id: 'actions',
@@ -244,9 +267,9 @@ export function GuestTable({
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                     </th>
                   ))}
                 </tr>
@@ -273,28 +296,103 @@ export function GuestTable({
           Showing {((filters.page || 1) - 1) * (filters.pageSize || 20) + 1} to{' '}
           {Math.min(
             (filters.page || 1) * (filters.pageSize || 20),
-            guests.length || 0
+            guestsData?.total || 0
           )}{' '}
-          of {guests.length || 0} results
+          of {guestsData?.total || 0} results
         </div>
-        
+
         <div className="flex items-center gap-2">
           <button
+            onClick={() => onFiltersChange({ page: 1 })}
+            disabled={(filters.page || 1) <= 1}
+            className="px-3 py-1 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            title="First page"
+          >
+            ««
+          </button>
+          <button
             onClick={() => onFiltersChange({ page: (filters.page || 1) - 1 })}
-            disabled={!table.getCanPreviousPage()}
+            disabled={(filters.page || 1) <= 1}
             className="px-3 py-1 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
           >
             Previous
           </button>
-          <span className="text-sm text-gray-700">
-            Page {filters.page || 1} of {table.getPageCount()}
-          </span>
+
+          {/* Page Numbers */}
+          <div className="flex items-center gap-1">
+            {(() => {
+              const currentPage = filters.page || 1;
+              const totalPages = guestsData?.totalPages || 1;
+              const pages: (number | string)[] = [];
+
+              if (totalPages <= 7) {
+                // Show all pages if 7 or fewer
+                for (let i = 1; i <= totalPages; i++) {
+                  pages.push(i);
+                }
+              } else {
+                // Always show first page
+                pages.push(1);
+
+                if (currentPage > 3) {
+                  pages.push('...');
+                }
+
+                // Show current page and neighbors
+                const start = Math.max(2, currentPage - 1);
+                const end = Math.min(totalPages - 1, currentPage + 1);
+
+                for (let i = start; i <= end; i++) {
+                  pages.push(i);
+                }
+
+                if (currentPage < totalPages - 2) {
+                  pages.push('...');
+                }
+
+                // Always show last page
+                pages.push(totalPages);
+              }
+
+              return pages.map((page, index) => {
+                if (page === '...') {
+                  return (
+                    <span key={`ellipsis-${index}`} className="px-2 text-gray-500">
+                      ...
+                    </span>
+                  );
+                }
+
+                return (
+                  <button
+                    key={page}
+                    onClick={() => onFiltersChange({ page: page as number })}
+                    className={`px-3 py-1 text-sm border rounded-lg transition-colors ${page === currentPage
+                      ? 'bg-primary text-white border-primary'
+                      : 'border-gray-300 hover:bg-gray-50'
+                      }`}
+                  >
+                    {page}
+                  </button>
+                );
+              });
+            })()}
+          </div>
+
           <button
             onClick={() => onFiltersChange({ page: (filters.page || 1) + 1 })}
-            disabled={!table.getCanNextPage()}
+            disabled={(filters.page || 1) >= (guestsData?.totalPages || 1)}
             className="px-3 py-1 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
           >
             Next
+          </button>
+          <button
+            onClick={() => onFiltersChange({ page: guestsData?.totalPages || 1 })}
+            disabled={(filters.page || 1) >= (guestsData?.totalPages || 1)}
+            className="px-3 py-1 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            title="Last page"
+          >
+            »»
           </button>
         </div>
       </div>
@@ -308,6 +406,16 @@ export function GuestTable({
           </p>
         </div>
       )}
+
+      {/* Attendee Details Modal */}
+      <AttendeeDetailsModal
+        isOpen={isDetailsModalOpen}
+        attendee={selectedGuest}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedGuest(null);
+        }}
+      />
     </div>
   );
 }

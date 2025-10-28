@@ -3,18 +3,18 @@ import { ConfigService } from '@nestjs/config';
 import * as Joi from 'joi';
 
 export const emailConfigValidationSchema = Joi.object({
-  EMAIL_FROM: Joi.string().email().required(),
-  EMAIL_FROM_NAME: Joi.string().required(),
-  EMAIL_API_KEY: Joi.string().allow('').when('EMAIL_ENABLED', {
-    is: true,
-    then: Joi.string().required(),
-  }),
+  EMAIL_FROM: Joi.string().email().optional(),
+  EMAIL_FROM_NAME: Joi.string().optional(),
+  EMAIL_API_KEY: Joi.string().allow('').optional(),
   EMAIL_ENABLED: Joi.boolean().default(false),
+  SMTP_HOST: Joi.string().default('smtp.gmail.com'),
+  SMTP_PORT: Joi.number().default(587),
+  SMTP_SECURE: Joi.boolean().default(false),
 });
 
 @Injectable()
 export class EmailConfig {
-  constructor(private configService: ConfigService) {}
+  constructor(private configService: ConfigService) { }
 
   get from() {
     return {

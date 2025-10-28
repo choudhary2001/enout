@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,46 +8,38 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  role      UserRole
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  events     Event[]
+  id         String      @id @default(cuid())
+  email      String      @unique
+  name       String?
+  role       UserRole
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
   broadcasts Broadcast[]
+  events     Event[]
 
   @@map("users")
 }
 
-enum UserRole {
-  ADMIN
-  HR
-
-  @@map("user_roles")
-}
-
 model Event {
-  id        String    @id @default(cuid())
-  name      String
-  startDate DateTime
-  endDate   DateTime
-  timezone  String
-  status    String
-  location  String?
-  createdBy String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  creator          User             @relation(fields: [createdBy], references: [id])
-  itineraryItems   ItineraryItem[]
-  invites          Invite[]
-  attendees        Attendee[]
-  rooms            Room[]
-  roomAssignments  RoomAssignment[]
-  broadcasts       Broadcast[]
-  mobileMessages   MobileMessage[]
+  id              String           @id @default(cuid())
+  name            String
+  startDate       DateTime
+  endDate         DateTime
+  timezone        String
+  status          String
+  location        String?
+  createdBy       String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  imageUrl        String?
+  attendees       Attendee[]
+  broadcasts      Broadcast[]
+  creator         User             @relation(fields: [createdBy], references: [id])
+  invites         Invite[]
+  itineraryItems  ItineraryItem[]
+  mobileMessages  MobileMessage[]
+  roomAssignments RoomAssignment[]
+  rooms           Room[]
 
   @@map("events")
 }
@@ -68,8 +57,7 @@ model ItineraryItem {
   allDay      Boolean  @default(false)
   type        String   @default("meeting")
   order       Int      @default(0)
-
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@index([eventId, start, end])
   @@index([eventId, order])
@@ -77,52 +65,49 @@ model ItineraryItem {
 }
 
 model Invite {
-  id          String    @id @default(cuid())
-  eventId     String
-  email       String
-  firstName   String?
-  lastName    String?
-  countryCode String?
-  phone       String?
-  status      String    @default("pending")
-  lastSentAt  DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  id             String          @id @default(cuid())
+  eventId        String
+  email          String
+  firstName      String?
+  lastName       String?
+  countryCode    String?
+  phone          String?
+  status         String          @default("pending")
+  lastSentAt     DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  event          Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  mobileMessages MobileMessage[]
 
   @@unique([eventId, email])
   @@map("invites")
 }
 
 model Attendee {
-  id           String    @id @default(cuid())
-  eventId      String
-  email        String
-  firstName    String
-  lastName     String
-  phone        String?
-  countryCode  String?
-  city         String?
-  // Renamed from mealPref for clarity
+  id                  String          @id @default(cuid())
+  eventId             String
+  email               String
+  firstName           String
+  lastName            String
+  phone               String?
+  city                String?
   dietaryRequirements String?
-  drinkPref    String?
-  // New fields for mobile registration form
-  workEmail    String?
-  location     String?
-  gender       String?
-  acceptedAt   DateTime?
-  tasksJson    Json      @default("{}")
-  idDocUrl     String?
-  phoneVerified Boolean   @default(false)
-  derivedStatus String    @default("not_invited")
-  lastSentAt   DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  event          Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  roomAssignment RoomAssignment?
-  mobileMessages MobileMessage[]
+  drinkPref           String?
+  workEmail           String?
+  location            String?
+  gender              String?
+  acceptedAt          DateTime?
+  tasksJson           Json            @default("{}")
+  idDocUrl            String?
+  phoneVerified       Boolean         @default(false)
+  derivedStatus       String          @default("not_invited")
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  lastSentAt          DateTime?
+  countryCode         String?
+  event               Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  mobileMessages      MobileMessage[]
+  roomAssignment      RoomAssignment?
 
   @@unique([eventId, email])
   @@index([eventId, derivedStatus])
@@ -130,16 +115,15 @@ model Attendee {
 }
 
 model Room {
-  id         String   @id @default(cuid())
-  eventId    String
-  roomNo     String
-  category   String
-  maxGuests  Int
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  event          Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  assignments    RoomAssignment[]
+  id          String           @id @default(cuid())
+  eventId     String
+  roomNo      String
+  category    String
+  maxGuests   Int
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  assignments RoomAssignment[]
+  event       Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, roomNo])
   @@index([eventId, category])
@@ -152,10 +136,9 @@ model RoomAssignment {
   roomId     String
   slot       Int
   attendeeId String   @unique
-
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  attendee  Attendee @relation(fields: [attendeeId], references: [id], onDelete: Cascade)
+  attendee   Attendee @relation(fields: [attendeeId], references: [id], onDelete: Cascade)
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  room       Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, attendeeId])
   @@unique([roomId, slot])
@@ -163,22 +146,21 @@ model RoomAssignment {
 }
 
 model Broadcast {
-  id          String    @id @default(cuid())
+  id          String       @id @default(cuid())
   eventId     String
   title       String
   subject     String
   bodyHtml    String
-  status      String    @default("draft")
-  audience    String    @default("all")
+  status      String       @default("draft")
+  audience    String       @default("all")
   scheduledAt DateTime?
   sentAt      DateTime?
   createdBy   String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  creator     User         @relation(fields: [createdBy], references: [id])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   attachments Attachment[]
+  creator     User         @relation(fields: [createdBy], references: [id])
+  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@index([eventId, status])
   @@index([eventId, sentAt])
@@ -186,54 +168,50 @@ model Broadcast {
 }
 
 model Attachment {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   broadcastId String
   name        String
   url         String
   mime        String
   size        Int
-
   broadcast   Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
 
   @@map("attachments")
 }
 
 model MobileMessage {
-  id         String   @id @default(cuid())
-  eventId    String
-  attendeeId String?
-  title      String
-  body       String
-  attachments Json?
-  status     String   @default("sent") // "sent", "draft", "scheduled"
-  unread     Boolean  @default(true)
-  createdAt  DateTime @default(now())
-
-  event     Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  attendee  Attendee? @relation(fields: [attendeeId], references: [id], onDelete: SetNull)
+  id             String    @id @default(cuid())
+  eventId        String
+  attendeeId     String?
+  title          String
+  body           String
+  attachments    Json?
+  unread         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  status         String    @default("sent")
+  deliveredAt    DateTime?
+  deliveryStatus String    @default("delivered")
+  inviteId       String?
+  attendee       Attendee? @relation(fields: [attendeeId], references: [id])
+  event          Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  invite         Invite?   @relation(fields: [inviteId], references: [id])
 
   @@index([eventId, createdAt])
+  @@index([inviteId])
+  @@index([deliveryStatus])
   @@map("mobile_messages")
 }
 
 model Admin {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  role         AdminRole @default(ADMIN)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
+  id            String         @id @default(cuid())
+  email         String         @unique
+  passwordHash  String
+  role          AdminRole      @default(ADMIN)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   refreshTokens RefreshToken[]
 
   @@map("admins")
-}
-
-enum AdminRole {
-  ADMIN
-  SUPER_ADMIN
-
-  @@map("admin_roles")
 }
 
 model RefreshToken {
@@ -243,9 +221,23 @@ model RefreshToken {
   expiresAt DateTime
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
   admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
   @@index([adminId])
   @@map("refresh_tokens")
+}
+
+enum UserRole {
+  ADMIN
+  HR
+  USER
+
+  @@map("user_roles")
+}
+
+enum AdminRole {
+  ADMIN
+  SUPER_ADMIN
+
+  @@map("admin_roles")
 }

@@ -1,5 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { env } from '@/lib/env';
+
+function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('admin_auth_token');
+}
 
 export interface RoomFilters {
   status: string[];
@@ -18,7 +23,16 @@ export interface Room {
   maxGuests: 1 | 2 | 3;
   createdAt: string;
   updatedAt: string;
-  assignments: { slot: 1 | 2 | 3; attendeeId: string | null }[];
+  assignments: {
+    slot: 1 | 2 | 3;
+    attendeeId: string | null;
+    attendee?: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+    } | null;
+  }[];
   // derived
   status: 'empty' | 'partial' | 'full';
 }
@@ -116,7 +130,7 @@ export function useRooms(eventId: string, filters: RoomFilters) {
     queryKey: roomKeys.list(eventId, filters),
     queryFn: async (): Promise<RoomsResponse> => {
       const params = new URLSearchParams();
-      
+
       filters.status.forEach(status => params.append('status[]', status));
       if (filters.category) params.append('category', filters.category);
       if (filters.search) params.append('q', filters.search);
@@ -124,7 +138,7 @@ export function useRooms(eventId: string, filters: RoomFilters) {
       params.append('page', filters.page.toString());
       params.append('pageSize', filters.pageSize.toString());
 
-      const response = await fetch(`/api/events/${eventId}/rooms?${params.toString()}`);
+      const response = await fetch(`${env.apiUrl}/api/events/${eventId}/rooms?${params.toString()}`);
       if (!response.ok) {
         throw new Error('Failed to fetch rooms');
       }
@@ -142,14 +156,14 @@ export function useEligibleAttendees(eventId: string, search?: string) {
       params.append('status', 'accepted,registered');
       if (search) params.append('q', search);
 
-      const url = `/api/events/${eventId}/attendees?${params.toString()}`;
+      const url = `${env.apiUrl}/api/events/${eventId}/attendees?${params.toString()}`;
       console.log('API: Fetching eligible attendees from:', url);
-      
+
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Failed to fetch eligible attendees');
       }
-      
+
       const data = await response.json();
       console.log('API: Received eligible attendees:', data.length, data);
       return data;
@@ -164,7 +178,7 @@ export function useRoomAssignment() {
 
   return useMutation({
     mutationFn: async ({ eventId, assignment }: { eventId: string; assignment: RoomAssignmentRequest }): Promise<RoomAssignmentResponse> => {
-      const response = await fetch(`/api/events/${eventId}/rooms/assign`, {
+      const response = await fetch(`${env.apiUrl}/api/events/${eventId}/rooms/assign`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -191,14 +205,14 @@ export function useRoomsExport() {
   return useMutation({
     mutationFn: async ({ eventId, filters }: { eventId: string; filters: Record<string, any> }): Promise<Blob> => {
       const params = new URLSearchParams();
-      
+
       if (filters.status?.length) {
         filters.status.forEach((status: string) => params.append('status[]', status));
       }
       if (filters.category) params.append('category', filters.category);
       if (filters.search) params.append('q', filters.search);
 
-      const response = await fetch(`/api/events/${eventId}/rooms/export?${params.toString()}`);
+      const response = await fetch(`${env.apiUrl}/api/events/${eventId}/rooms/export?${params.toString()}`);
       if (!response.ok) {
         throw new Error('Failed to export rooms');
       }
@@ -214,37 +228,19 @@ export function useAddRoom() {
 
   return useMutation({
     mutationFn: async ({ eventId, room }: { eventId: string; room: AddRoomRequest }): Promise<Room> => {
-      // TODO: Implement room creation endpoint in the backend
-      // For now, create a local room and store in localStorage
-      const mockRoom: Room = {
-        id: `room-${Date.now()}`,
-        eventId,
-        roomNo: room.roomNo,
-        category: room.category,
-        maxGuests: room.maxGuests,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        assignments: Array.from({ length: room.maxGuests }, (_, i) => ({
-          slot: (i + 1) as 1 | 2 | 3,
-          attendeeId: null,
-        })),
-        status: 'empty' as const,
-      };
-      
-      // Store in localStorage
-      const storageKey = `rooms-${eventId}`;
-      const existingRooms = localStorage.getItem(storageKey);
-      const rooms = existingRooms ? JSON.parse(existingRooms) : [];
-      rooms.push(mockRoom);
-      localStorage.setItem(storageKey, JSON.stringify(rooms));
-      
-      // Dispatch event to notify other components
-      window.dispatchEvent(new Event('roomsChanged'));
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      return mockRoom;
+      const response = await fetch(`${env.apiUrl}/api/events/${eventId}/rooms`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(room),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create room');
+      }
+
+      return response.json();
     },
     onSuccess: (_, { eventId }) => {
       queryClient.invalidateQueries({ queryKey: roomKeys.lists() });
@@ -257,34 +253,42 @@ export function useAssignRoom() {
 
   return useMutation({
     mutationFn: async ({ eventId, assignment }: { eventId: string; assignment: AssignRoomRequest }): Promise<void> => {
-      // TODO: Implement room assignment endpoint in the backend
-      // For now, update localStorage
-      const storageKey = `rooms-${eventId}`;
-      const existingRooms = localStorage.getItem(storageKey);
-      const rooms: Room[] = existingRooms ? JSON.parse(existingRooms) : [];
-      
-      const roomIndex = rooms.findIndex(r => r.id === assignment.roomId);
-      if (roomIndex !== -1) {
-        const assignmentIndex = rooms[roomIndex].assignments.findIndex(a => a.slot === assignment.slot);
-        if (assignmentIndex !== -1) {
-          rooms[roomIndex].assignments[assignmentIndex].attendeeId = assignment.attendeeId;
-        }
-        
-        // Update status
-        const assignedCount = rooms[roomIndex].assignments.filter(a => a.attendeeId !== null).length;
-        if (assignedCount === 0) {
-          rooms[roomIndex].status = 'empty';
-        } else if (assignedCount === rooms[roomIndex].maxGuests) {
-          rooms[roomIndex].status = 'full';
-        } else {
-          rooms[roomIndex].status = 'partial';
-        }
-        
-        localStorage.setItem(storageKey, JSON.stringify(rooms));
-        window.dispatchEvent(new Event('roomsChanged'));
+      const url = `${env.apiUrl}/api/events/${eventId}/rooms/assign`;
+      const token = getAuthToken();
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
       }
-      
-      await new Promise(resolve => setTimeout(resolve, 100));
+
+      console.log('Assigning room:', { url, assignment, hasToken: !!token });
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          roomId: assignment.roomId,
+          slot: assignment.slot,
+          attendeeId: assignment.attendeeId,
+        }),
+      });
+
+      console.log('Assignment response:', response.status, response.statusText);
+
+      if (!response.ok) {
+        let errorMessage = `Failed to assign room: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          console.error('Assignment failed:', errorData);
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          const errorText = await response.text();
+          console.error('Assignment failed:', errorText);
+        }
+        throw new Error(errorMessage);
+      }
     },
     onSuccess: (_, { eventId }) => {
       queryClient.invalidateQueries({ queryKey: roomKeys.lists() });
@@ -298,34 +302,19 @@ export function useClearAssignment() {
 
   return useMutation({
     mutationFn: async ({ eventId, assignment }: { eventId: string; assignment: ClearAssignmentRequest }): Promise<void> => {
-      // TODO: Implement clear assignment endpoint in the backend
-      // For now, update localStorage
-      const storageKey = `rooms-${eventId}`;
-      const existingRooms = localStorage.getItem(storageKey);
-      const rooms: Room[] = existingRooms ? JSON.parse(existingRooms) : [];
-      
-      const roomIndex = rooms.findIndex(r => r.id === assignment.roomId);
-      if (roomIndex !== -1) {
-        const assignmentIndex = rooms[roomIndex].assignments.findIndex(a => a.slot === assignment.slot);
-        if (assignmentIndex !== -1) {
-          rooms[roomIndex].assignments[assignmentIndex].attendeeId = null;
-        }
-        
-        // Update status
-        const assignedCount = rooms[roomIndex].assignments.filter(a => a.attendeeId !== null).length;
-        if (assignedCount === 0) {
-          rooms[roomIndex].status = 'empty';
-        } else if (assignedCount === rooms[roomIndex].maxGuests) {
-          rooms[roomIndex].status = 'full';
-        } else {
-          rooms[roomIndex].status = 'partial';
-        }
-        
-        localStorage.setItem(storageKey, JSON.stringify(rooms));
-        window.dispatchEvent(new Event('roomsChanged'));
+      const response = await fetch(`${env.apiUrl}/api/events/${eventId}/rooms/${assignment.roomId}/unassign`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          slot: assignment.slot,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to clear assignment');
       }
-      
-      await new Promise(resolve => setTimeout(resolve, 100));
     },
     onSuccess: (_, { eventId }) => {
       queryClient.invalidateQueries({ queryKey: roomKeys.lists() });
@@ -344,11 +333,11 @@ export function useDeleteRooms() {
       const storageKey = `rooms-${eventId}`;
       const existingRooms = localStorage.getItem(storageKey);
       const rooms: Room[] = existingRooms ? JSON.parse(existingRooms) : [];
-      
+
       const updatedRooms = rooms.filter(room => !roomIds.includes(room.id));
       localStorage.setItem(storageKey, JSON.stringify(updatedRooms));
       window.dispatchEvent(new Event('roomsChanged'));
-      
+
       await new Promise(resolve => setTimeout(resolve, 100));
     },
     onSuccess: (_, { eventId }) => {

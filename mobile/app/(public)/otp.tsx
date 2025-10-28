@@ -16,7 +16,7 @@ type OtpFormData = z.infer<typeof otpSchema>;
 export default function OtpScreen() {
   const router = useRouter();
   const { email } = useLocalSearchParams<{ email: string }>();
-  
+
   const {
     control,
     handleSubmit,
@@ -24,34 +24,54 @@ export default function OtpScreen() {
   } = useForm<OtpFormData>({
     resolver: zodResolver(otpSchema),
     defaultValues: {
-      code: '',
+      code: '', // Empty by default - user must enter OTP from email
     },
   });
 
   const onSubmit = async (data: OtpFormData) => {
     try {
       console.log('OTP Screen: Submitting OTP:', data.code);
-      const response = await api.verifyEmail({ 
-        email: email || '', 
-        code: data.code 
+      const response = await api.verifyEmail({
+        email: email || '',
+        code: data.code
       });
-      
+
       console.log('OTP Screen: API response:', response);
-      
+
       if (response.ok) {
         console.log('OTP Screen: Email verified, inviteStatus:', response.inviteStatus);
-        
-        // Navigate directly without Alert for testing
-        console.log('OTP Screen: Navigating directly...');
+        console.log('OTP Screen: User info:', response.user);
+
+        // Store user information for use in other screens
+        if (response.user) {
+          // Store user data for the invite screen and other screens
+          // In a real app, you might want to store this in a context or global state
+        }
+
+        // Navigate based on invite status
+        console.log('OTP Screen: Navigating based on invite status...');
         if (response.inviteStatus === 'pending') {
           console.log('OTP Screen: Navigating to invite screen');
-          router.push('/invite');
+          router.push({
+            pathname: '/(public)/invite',
+            params: {
+              userEmail: email,
+              userName: response.user?.firstName || email?.split('@')[0] || 'User'
+            }
+          });
         } else if (response.inviteStatus === 'accepted') {
           console.log('OTP Screen: Navigating to tasks screen');
-          router.push('/tasks');
+          router.push('/(public)/tasks');
         } else {
-          console.log('OTP Screen: Navigating to splash screen');
-          router.push('/splash');
+          console.log('OTP Screen: No invite found, showing appropriate screen');
+          router.push({
+            pathname: '/(public)/invite',
+            params: {
+              userEmail: email,
+              userName: response.user?.firstName || email?.split('@')[0] || 'User',
+              noInvite: 'true'
+            }
+          });
         }
       }
     } catch (error) {
@@ -59,7 +79,7 @@ export default function OtpScreen() {
       if (error instanceof Error) {
         Alert.alert('Error', error.message);
       } else {
-        Alert.alert('Error', 'Invalid OTP. Please try again.');
+        Alert.alert('Error', 'Invalid OTP. Please check the code sent to your email and try again.');
       }
     }
   };
@@ -74,8 +94,9 @@ export default function OtpScreen() {
       <View style={styles.content}>
         <Text style={styles.title}>Enter OTP</Text>
         <Text style={styles.subtitle}>
-          We sent a 6-digit code to{'\n'}
+          We sent a 6-digit verification code via email to{'\n'}
           <Text style={styles.email}>{email}</Text>
+          {'\n'}Please check your inbox and spam folder.
         </Text>
 
         <View style={styles.form}>
@@ -121,7 +142,7 @@ export default function OtpScreen() {
         </View>
 
         <Text style={styles.hint}>
-          Tip: Use 123456 for testing
+          Didn't receive the code? Check your spam folder or request a new one.
         </Text>
       </View>
     </View>

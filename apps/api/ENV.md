@@ -42,15 +42,17 @@ This document describes all environment variables used in the Enout API.
 | `REDIS_OTP_TTL` | OTP time-to-live in seconds | `300` | No |
 | `REDIS_OTP_MAX_ATTEMPTS` | Max OTP verification attempts | `3` | No |
 
-## Email (Brevo/Sendinblue)
+## Email (SMTP/Gmail)
 
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
-| `BREVO_API_KEY` | Brevo API key | - | Yes |
-| `EMAIL_SENDER_ADDRESS` | Sender email address | `tanmay@enout.in` | No |
-| `EMAIL_SENDER_NAME` | Sender name | `Enout` | No |
-| `EMAIL_RETRY_ATTEMPTS` | Max email sending retries | `3` | No |
-| `EMAIL_RETRY_DELAY` | Delay between retries (ms) | `1000` | No |
+| `EMAIL_ENABLED` | Enable email sending | `true` | No |
+| `EMAIL_FROM` | Sender email address | - | Yes |
+| `EMAIL_FROM_NAME` | Sender name | - | Yes |
+| `EMAIL_API_KEY` | Email service app password (for Gmail) | - | Yes (when enabled) |
+| `SMTP_HOST` | SMTP server host | `smtp.gmail.com` | No |
+| `SMTP_PORT` | SMTP server port | `587` | No |
+| `SMTP_SECURE` | Use secure connection | `false` | No |
 
 ## Example .env File
 
@@ -80,12 +82,14 @@ REDIS_PASSWORD=
 REDIS_OTP_TTL=300
 REDIS_OTP_MAX_ATTEMPTS=3
 
-# Email (Brevo/Sendinblue)
-BREVO_API_KEY=your-brevo-api-key
-EMAIL_SENDER_ADDRESS=tanmay@enout.in
-EMAIL_SENDER_NAME=Enout
-EMAIL_RETRY_ATTEMPTS=3
-EMAIL_RETRY_DELAY=1000
+# Email (SMTP/Gmail)
+EMAIL_ENABLED=true
+EMAIL_FROM=tanmay@enout.in
+EMAIL_FROM_NAME=Enout Event Management
+EMAIL_API_KEY=your-gmail-app-password
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
 ```
 
 ## Notes
@@ -105,7 +109,9 @@ EMAIL_RETRY_DELAY=1000
    - Consider lower limits for authentication endpoints
 
 4. **Email**:
-   - Verify sender email in Brevo dashboard
+   - For Gmail, you need to generate an App Password (not regular password)
+   - Enable 2-Step Verification in Gmail settings
+   - Generate App Password: https://myaccount.google.com/apppasswords
    - Test email configuration before deployment
 
 5. **Redis**:

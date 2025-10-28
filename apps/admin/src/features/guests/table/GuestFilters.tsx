@@ -24,18 +24,22 @@ export function GuestFilters({
   // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
-      onFiltersChange({ q: searchQuery || undefined });
+      // Only call onFiltersChange if the search query actually changed
+      const newQ = searchQuery || undefined;
+      if (newQ !== filters.q) {
+        onFiltersChange({ q: newQ });
+      }
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, onFiltersChange]);
+  }, [searchQuery, filters.q, onFiltersChange]); // Added back but with filters.q check
 
   const handleStatusToggle = (status: string) => {
     const currentStatuses = filters.status || [];
     const newStatuses = currentStatuses.includes(status as any)
       ? currentStatuses.filter(s => s !== status)
       : [...currentStatuses, status as any];
-    
+
     onFiltersChange({ status: newStatuses.length > 0 ? newStatuses : undefined });
   };
 
@@ -119,9 +123,8 @@ export function GuestFilters({
                   <button
                     key={option.value}
                     onClick={() => handleSortChange(option.value)}
-                    className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-gray-50 ${
-                      filters.sort === option.value ? 'bg-primary/10 text-primary' : 'text-gray-700'
-                    }`}
+                    className={`w-full text-left px-3 py-2 text-sm rounded hover:bg-gray-50 ${filters.sort === option.value ? 'bg-primary/10 text-primary' : 'text-gray-700'
+                      }`}
                   >
                     {option.label}
                   </button>
@@ -159,7 +162,7 @@ export function GuestFilters({
               </button>
             </span>
           )}
-          
+
           {filters.status?.map((status) => (
             <span key={status} className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
               {statusOptions.find(opt => opt.value === status)?.label}
@@ -171,7 +174,7 @@ export function GuestFilters({
               </button>
             </span>
           ))}
-          
+
           {filters.sort && (
             <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-800 text-sm rounded-full">
               Sort: {sortOptions.find(opt => opt.value === filters.sort)?.label}

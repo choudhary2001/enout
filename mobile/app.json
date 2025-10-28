@@ -1,24 +1,28 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "Enout Mobile",
+    "slug": "enout-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
+    "scheme": "enout-mobile",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#F9B24E"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.enout.mobile"
     },
     "android": {
+      "package": "com.enout.mobile",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#F9B24E"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -26,15 +30,14 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "developer": {
-      "tool": "expo-cli"
-    },
     "plugins": [
+      "expo-router",
       [
-        "expo-router",
-        {
-          "origin": false
-        }
+        "expo-secure-store",
+        {}
+      ],
+      [
+        "react-native-reanimated/plugin"
       ]
     ]
   }

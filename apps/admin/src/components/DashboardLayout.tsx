@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Plus, Search, Calendar, Trash2 } from 'lucide-react';
+import { Plus, Search, Calendar, Trash2, LogOut } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useEventStore } from '@/lib/store';
 import { useEvents } from '@/lib/hooks';
 import { CreateEventModal } from './CreateEventModal';
@@ -18,61 +19,28 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { selectedEventId, selectedEvent, setSelectedEventId, setSelectedEvent } = useEventStore();
   const { events } = useEvents();
+  const { logout, email } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  // Fallback events if API fails
-  const fallbackEvents = [
-    {
-      id: 'event-1',
-      name: 'Brevo Annual Off-site 2025',
-      startDate: '2025-06-01T00:00:00.000Z',
-      endDate: '2025-06-07T23:59:59.000Z',
-      timezone: 'Asia/Kolkata',
-      status: 'complete' as const,
-      location: 'Holiday Inn Phuket',
-    },
-    {
-      id: 'event-2',
-      name: 'Q2 Team Building',
-      startDate: '2025-04-15T00:00:00.000Z',
-      endDate: '2025-04-17T23:59:59.000Z',
-      timezone: 'America/New_York',
-      status: 'complete' as const,
-      location: 'Mountain Resort',
-    },
-    {
-      id: 'event-3',
-      name: 'Product Launch Event',
-      startDate: '2025-02-10T00:00:00.000Z',
-      endDate: '2025-02-10T23:59:59.000Z',
-      timezone: 'Europe/London',
-      status: 'complete' as const,
-      location: 'Convention Center',
-    },
-  ];
-
   // Use fallback events if API fails or is loading
   const displayEvents = useMemo(() => {
-    return events || fallbackEvents;
+    return events;
   }, [events]);
 
-  // Auto-select the first event on first load
+  // Auto-select the first event on first load (but don't auto-redirect)
   useEffect(() => {
     if (displayEvents && displayEvents.length > 0 && !selectedEventId) {
       const firstEvent = displayEvents[0];
+      // Only auto-select if we don't have a selected event yet
+      // Don't auto-navigate - let user stay where they are
       setSelectedEventId(firstEvent.id);
       setSelectedEvent(firstEvent);
-      
-      // Navigate to the event's guests page
-      if (pathname === '/events') {
-        router.push(`/events/${firstEvent.id}/guests`);
-      }
     }
-  }, [displayEvents, selectedEventId, setSelectedEventId, setSelectedEvent, pathname, router]);
+  }, [displayEvents, selectedEventId, setSelectedEventId, setSelectedEvent]);
 
   // Update selectedEvent when selectedEventId changes
   useEffect(() => {
@@ -90,7 +58,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     if (event) {
       setSelectedEvent(event);
       // Navigate to the selected event's current tab
-      const currentTab = pathname.split('/').pop() || 'guests';
+      const pathParts = pathname.split('/');
+      const currentTab = pathParts.length >= 4 ? pathParts[3] : 'guests';
       router.push(`/events/${eventId}/${currentTab}`);
     }
   };
@@ -99,7 +68,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     try {
       // Call API to delete the event from database
       await api.deleteEvent(eventId);
-      
+
       // Show success toast
       toast({
         title: 'Event deleted',
@@ -123,19 +92,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
-  const filteredEvents = displayEvents?.filter(event => 
+  const filteredEvents = displayEvents?.filter(event =>
     event.name.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
   const completedEvents = filteredEvents.filter(e => e.status === 'complete');
   const activeEvents = filteredEvents.filter(e => e.status !== 'complete');
-  
+
   // Events filtered and categorized
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Left Sidebar */}
-      <div className="w-72 bg-white border-r border-gray-200 flex flex-col">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
+      {/* Left Sidebar - Fixed */}
+      <div className="w-72 bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0 bottom-0 z-10">
         {/* Header */}
         <div className="p-6 border-b border-gray-200">
           <h1 className="text-xl font-semibold text-gray-900">My Events</h1>
@@ -153,7 +122,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
           </div>
-          
+
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
@@ -171,11 +140,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               {activeEvents.map((event) => (
                 <div
                   key={event.id}
-                  className={`group relative w-full text-left p-3 rounded-lg transition-colors ${
-                    selectedEventId === event.id
-                      ? 'bg-orange-50 border border-orange-200'
-                      : 'hover:bg-gray-50'
-                  }`}
+                  className={`group relative w-full text-left p-3 rounded-lg transition-colors ${selectedEventId === event.id
+                    ? 'bg-orange-50 border border-orange-200'
+                    : 'hover:bg-gray-50'
+                    }`}
                 >
                   <button
                     onClick={() => handleEventSelect(event.id)}
@@ -237,11 +205,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 {completedEvents.map((event) => (
                   <div
                     key={event.id}
-                    className={`group relative w-full text-left p-3 rounded-lg transition-colors ${
-                      selectedEventId === event.id
-                        ? 'bg-orange-50 border border-orange-200'
-                        : 'hover:bg-gray-50'
-                    }`}
+                    className={`group relative w-full text-left p-3 rounded-lg transition-colors ${selectedEventId === event.id
+                      ? 'bg-orange-50 border border-orange-200'
+                      : 'hover:bg-gray-50'
+                      }`}
                   >
                     <button
                       onClick={() => handleEventSelect(event.id)}
@@ -293,18 +260,27 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="p-4 border-t border-gray-200">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-medium">A</span>
+              <span className="text-white text-sm font-medium">
+                {email?.[0]?.toUpperCase() || 'A'}
+              </span>
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">Admin User</p>
+              <p className="text-sm font-medium text-gray-900">{email}</p>
               <p className="text-xs text-gray-500">Admin</p>
             </div>
+            <button
+              onClick={logout}
+              className="p-2 hover:bg-gray-100 rounded-lg"
+              title="Logout"
+            >
+              <LogOut className="h-4 w-4 text-gray-500" />
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      {/* Main Content - Scrollable */}
+      <div className="flex-1 flex flex-col ml-72 overflow-y-auto">
         {children}
       </div>
 

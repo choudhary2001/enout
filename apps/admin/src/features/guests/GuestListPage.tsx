@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
@@ -22,7 +22,7 @@ export function GuestListPage({ eventId }: GuestListPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  
+
   // URL state management
   const [filters, setFilters] = useState<GuestFilters>(() => {
     const q = searchParams.get('q') || undefined;
@@ -31,7 +31,7 @@ export function GuestListPage({ eventId }: GuestListPageProps) {
     const sort = searchParams.get('sort') as GuestFilters['sort'] || undefined;
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '20');
-    
+
     return { q, status, sort, page, pageSize };
   });
 
@@ -40,18 +40,23 @@ export function GuestListPage({ eventId }: GuestListPageProps) {
   const [isAddGuestDialogOpen, setIsAddGuestDialogOpen] = useState(false);
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
 
-  // Update URL when filters change
+  // Update URL when filters change (without causing infinite loop)
   useEffect(() => {
     const params = new URLSearchParams();
-    
+
     if (filters.q) params.set('q', filters.q);
     if (filters.status?.length) params.set('status', filters.status.join(','));
     if (filters.sort) params.set('sort', filters.sort);
     if (filters.page && filters.page > 1) params.set('page', filters.page.toString());
     if (filters.pageSize && filters.pageSize !== 20) params.set('pageSize', filters.pageSize.toString());
-    
+
     const newUrl = `${window.location.pathname}?${params.toString()}`;
-    router.replace(newUrl, { scroll: false });
+    const currentUrl = window.location.pathname + window.location.search;
+
+    if (newUrl !== currentUrl) {
+      console.log('Updating URL from', currentUrl, 'to', newUrl);
+      router.replace(newUrl, { scroll: false });
+    }
   }, [filters, router]);
 
   // Fetch guests data
@@ -146,7 +151,7 @@ export function GuestListPage({ eventId }: GuestListPageProps) {
   const exportCSVMutation = useMutation({
     mutationFn: async () => {
       if (!guestsData?.data) return;
-      
+
       const csvData = guestsData.data.map((guest: Guest) => ({
         email: guest.email,
         firstName: guest.firstName || '',
@@ -202,12 +207,12 @@ export function GuestListPage({ eventId }: GuestListPageProps) {
   // Get all guests for stats calculation (without pagination/filters)
   const { data: allGuestsData } = useQuery({
     queryKey: ['guests', eventId, { all: true }],
-    queryFn: () => guestsApi.getGuests(eventId, { 
-      q: undefined, 
-      status: undefined, 
-      sort: undefined, 
-      page: 1, 
-      pageSize: 100 // API has max limit of 100
+    queryFn: () => guestsApi.getGuests(eventId, {
+      q: undefined,
+      status: undefined,
+      sort: undefined,
+      page: 1,
+      pageSize: 999999 // No limit - fetch all guests for stats
     }),
     enabled: !!eventId,
   });
@@ -230,9 +235,33 @@ export function GuestListPage({ eventId }: GuestListPageProps) {
   }, { invited: 0, accepted: 0, registered: 0 }) || { invited: 0, accepted: 0, registered: 0 };
 
 
-  const handleFilterChange = (newFilters: Partial<GuestFilters>) => {
-    setFilters(prev => ({ ...prev, ...newFilters, page: 1 })); // Reset to page 1 on filter change
-  };
+  const handleFilterChange = useCallback((newFilters: Partial<GuestFilters>) => {
+    console.log('handleFilterChange called with:', newFilters);
+
+    // Ignore empty filter changes that would reset page unintentionally
+    if (Object.keys(newFilters).length === 0) {
+      console.log('Ignoring empty filter change');
+      return;
+    }
+
+    // Check if page is being changed explicitly vs other filters
+    if (newFilters.page !== undefined) {
+      // Explicit page change - don't reset to page 1
+      console.log('Changing page to:', newFilters.page);
+      setFilters(prev => {
+        const updated = { ...prev, ...newFilters };
+        console.log('Updated filters:', updated);
+        return updated;
+      });
+    } else if ('page' in newFilters && newFilters.page === undefined) {
+      // If page is explicitly set to undefined, it's a filter reset
+      setFilters(prev => ({ ...prev, ...newFilters, page: 1 }));
+    } else {
+      // Regular filter change - reset to page 1
+      console.log('Filter change - resetting to page 1');
+      setFilters(prev => ({ ...prev, ...newFilters, page: 1 }));
+    }
+  }, []);
 
   const handleBulkAction = (action: 'send' | 'resend' | 'export' | 'remove') => {
     switch (action) {
@@ -268,7 +297,7 @@ export function GuestListPage({ eventId }: GuestListPageProps) {
     <div className="space-y-6">
       {/* Stats */}
       <div className="flex items-center justify-between">
-        <StatChips 
+        <StatChips
           invited={stats.invited}
           accepted={stats.accepted}
           registered={stats.registered}
@@ -325,6 +354,7 @@ export function GuestListPage({ eventId }: GuestListPageProps) {
           {/* Table */}
           <GuestTable
             guests={guestsData?.data || []}
+            guestsData={guestsData}
             isLoading={isLoading}
             selectedGuests={selectedGuests}
             onSelectionChange={setSelectedGuests}

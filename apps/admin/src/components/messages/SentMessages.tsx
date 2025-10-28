@@ -17,7 +17,12 @@ export function SentMessages({ eventId }: SentMessagesProps) {
   const { data: messages = [], isLoading, error } = useQuery({
     queryKey: ['messages', eventId],
     queryFn: () => api.getMessages(eventId),
-    select: (data) => data.filter((msg: any) => msg.status === 'sent'),
+    select: (data) => {
+      // Return all sent messages, sorted by date (newest first)
+      return data
+        .filter((msg: any) => msg.status === 'sent')
+        .sort((a: any, b: any) => new Date(b.createdAt || b.sentAt).getTime() - new Date(a.createdAt || a.sentAt).getTime());
+    },
   });
 
   const handleMessageClick = (message: any) => {
@@ -81,26 +86,21 @@ export function SentMessages({ eventId }: SentMessagesProps) {
                 </div>
               </div>
             </div>
-          
-          <div className="flex items-center justify-between text-sm text-gray-500">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center">
-                <Users className="h-4 w-4 mr-1" />
-                <span>All attendees</span>
+
+            <div className="flex items-center justify-between text-sm text-gray-500">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center">
+                  <Users className="h-4 w-4 mr-1" />
+                  <span>All attendees</span>
+                </div>
+                <div className="flex items-center">
+                  <Clock className="h-4 w-4 mr-1" />
+                  <span>Sent {format(new Date(message.sentAt || message.createdAt), 'MMM d, yyyy h:mm a')}</span>
+                </div>
               </div>
-              <div className="flex items-center">
-                <Clock className="h-4 w-4 mr-1" />
-                <span>Sent {format(new Date(message.sentAt || message.createdAt), 'MMM d, yyyy h:mm a')}</span>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <span className="text-gray-400">•</span>
-              <span>{message.recipientCount || 0} recipients</span>
             </div>
           </div>
-        </div>
-      ))}
+        ))}
       </div>
 
       {/* Message View Modal */}
@@ -160,10 +160,6 @@ export function SentMessages({ eventId }: SentMessagesProps) {
                     </div>
                   </div>
 
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">Recipients</h3>
-                    <p className="text-gray-900">{selectedMessage.recipientCount || 0} recipients</p>
-                  </div>
                 </div>
 
                 {/* Attachments */}
@@ -172,12 +168,27 @@ export function SentMessages({ eventId }: SentMessagesProps) {
                     <h3 className="text-sm font-medium text-gray-700 mb-2">Attachments</h3>
                     <div className="space-y-2">
                       {selectedMessage.attachments.map((attachment: any, index: number) => (
-                        <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                          <Mail className="h-4 w-4 text-gray-500" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{attachment.name}</p>
-                            <p className="text-xs text-gray-500">{attachment.size}</p>
+                        <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                          <Mail className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{attachment.name}</p>
+                            <p className="text-xs text-gray-500">
+                              {(attachment.size / 1024).toFixed(2)} KB
+                              {attachment.type && ` • ${attachment.type}`}
+                            </p>
                           </div>
+                          {attachment.url && (
+                            <a
+                              href={attachment.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 px-3 py-1 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Eye className="h-4 w-4" />
+                              View
+                            </a>
+                          )}
                         </div>
                       ))}
                     </div>

@@ -1,22 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { api } from '../../../src/lib/api';
+import { storage } from '../../../src/lib/storage';
 
 interface Profile {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
-  phone: string;
-  role: string;
-  workEmail: string;
-  company: string;
-  dietaryRequirements: string;
-  emergencyContact: string;
-  location: string;
-  gender: string;
-  idCardUrl: string | null;
+  phone?: string;
+  role?: string;
+  workEmail?: string;
+  company?: string;
+  dietaryRequirements?: string;
+  emergencyContact?: string;
+  location?: string;
+  gender?: string;
+  idDocUrl?: string; // Note: API returns idDocUrl, not idCardUrl
+  phoneVerified?: boolean;
 }
 
 export default function ProfileScreen() {
@@ -28,37 +30,147 @@ export default function ProfileScreen() {
     loadProfile();
   }, []);
 
+  // Refresh profile when screen comes into focus (e.g., after navigation back)
+  useFocusEffect(
+    useCallback(() => {
+      // Add a small delay to avoid race conditions with the initial load
+      const timer = setTimeout(() => {
+        if (!loading && !profile) {
+          loadProfile();
+        }
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }, [loading, profile])
+  );
+
   const loadProfile = async () => {
     try {
+      console.log('Loading profile...');
+      
+      // Check if we have authentication token first
+      const token = await storage.getItem('auth_token');
+      console.log('Auth token exists:', !!token);
+      
+      if (!token) {
+        console.log('No auth token found - redirecting to login');
+        Alert.alert(
+          'Authentication Required',
+          'Please log in to view your profile.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                router.replace('/(public)/email');
+              },
+            },
+          ]
+        );
+        setLoading(false);
+        return;
+      }
+      
       const response = await api.getMe();
-      setProfile(response);
+      
+      console.log('Profile API response:', response);
+      
+      // Handle authentication errors - check status and message for auth issues
+      if (response.status === 401 || response.message === 'Authentication required' || response.message?.includes('Authentication')) {
+        console.log('Authentication required - redirecting to login');
+        Alert.alert(
+          'Authentication Required',
+          'Please log in again to view your profile.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Navigate to email/login screen
+                router.replace('/(public)/email');
+              },
+            },
+          ]
+        );
+        return;
+      }
+      
+      if (response.ok && response.data) {
+        // New API format - map the response data properly
+        const apiData = response.data as any;
+        console.log('Profile data from API:', apiData);
+        console.log('Response structure:', { ok: response.ok, hasData: !!response.data, dataType: typeof response.data });
+        
+        // Handle different response structures
+        let profileData = apiData;
+        
+        // If the data is nested in another structure, try to extract it
+        if (apiData && typeof apiData === 'object') {
+          // Check if data is wrapped in another property
+          if (apiData.data) {
+            profileData = apiData.data;
+          }
+        }
+        
+        console.log('Final profile data to map:', profileData);
+        
+        // Ensure we have the required fields
+        const mappedProfile: Profile = {
+          id: profileData?.id || '',
+          email: profileData?.email || '',
+          firstName: profileData?.firstName || '',
+          lastName: profileData?.lastName || '',
+          phone: profileData?.phone,
+          workEmail: profileData?.workEmail,
+          location: profileData?.location,
+          gender: profileData?.gender,
+          dietaryRequirements: profileData?.dietaryRequirements,
+          idDocUrl: profileData?.idDocUrl,
+          phoneVerified: profileData?.phoneVerified,
+          // Fields not in API - set defaults
+          role: 'attendee',
+          company: undefined,
+          emergencyContact: undefined,
+        };
+        
+        console.log('Mapped profile:', mappedProfile);
+        setProfile(mappedProfile);
+      } else {
+        console.error('Profile API response not OK:', response);
+        
+        // Handle other error cases
+        let errorMessage = 'Failed to load profile';
+        if (response.message === 'Authentication required') {
+          errorMessage = 'Please log in again';
+          // Auto-redirect for auth errors
+          setTimeout(() => {
+            router.replace('/(public)/email');
+          }, 1000);
+        }
+        
+        Alert.alert('Error', errorMessage);
+      }
     } catch (error) {
       console.error('Error loading profile:', error);
-      Alert.alert('Error', 'Failed to load profile');
+      
+      // Check if it's an authentication error
+      if (error instanceof Error && error.message.includes('Authentication')) {
+        Alert.alert(
+          'Authentication Required',
+          'Please log in again to continue.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                router.replace('/(public)/email');
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to load profile data');
+      }
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: () => {
-            // In a real app, you'd clear the auth token
-            router.replace('/(public)/splash');
-          },
-        },
-      ]
-    );
   };
 
   if (loading) {
@@ -105,7 +217,7 @@ export default function ProfileScreen() {
             : profile.email || 'User'}
         </Text>
         <Text style={styles.email}>{profile.email || 'Email not provided'}</Text>
-        <Text style={styles.role}>{profile.role.toUpperCase()}</Text>
+        <Text style={styles.role}>{(profile.role || 'ATTENDEE').toUpperCase()}</Text>
       </View>
 
       <View style={styles.section}>
@@ -149,14 +261,11 @@ export default function ProfileScreen() {
         <View style={styles.infoItem}>
           <Text style={styles.infoLabel}>ID Card</Text>
           <Text style={styles.infoValue}>
-            {profile.idCardUrl ? '✅ Uploaded' : '❌ Not uploaded'}
+            {profile.idDocUrl ? '✅ Uploaded' : '❌ Not uploaded'}
           </Text>
         </View>
       </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>Logout</Text>
-        </TouchableOpacity>
       </ScrollView>
 
       {/* Bottom Navigation */}
@@ -375,29 +484,6 @@ const styles = StyleSheet.create({
     flex: 2,
     textAlign: 'right',
     letterSpacing: 0.1,
-  },
-  logoutButton: {
-    backgroundColor: '#ef4444',
-    paddingVertical: 18,
-    paddingHorizontal: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    marginTop: 24,
-    marginHorizontal: 20,
-    shadowColor: '#ef4444',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  logoutButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
   bottomNavigation: {
     flexDirection: 'row',

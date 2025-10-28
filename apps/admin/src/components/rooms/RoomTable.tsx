@@ -6,6 +6,7 @@ import { Room, AttendeeLite } from '@/features/rooms/api';
 import { StatusChip } from './StatusChip';
 import { GuestCellPicker } from './GuestCellPicker';
 import { AddRoomDialog } from './AddRoomDialog';
+import { ExportPdfButton } from './ExportPdfButton';
 import { useAddRoom, useAssignRoom, useClearAssignment, useDeleteRooms } from '@/features/rooms/api';
 import { cn } from '@/lib/utils';
 
@@ -28,19 +29,40 @@ export function RoomTable({ rooms, eligibleAttendees, eventId, isLoading }: Room
 
   const getAttendeeForSlot = (room: Room, slot: 1 | 2 | 3): AttendeeLite | null => {
     const assignment = room.assignments.find(a => a.slot === slot);
-    if (!assignment?.attendeeId) return null;
-    if (!Array.isArray(eligibleAttendees)) return null;
-    return eligibleAttendees.find(a => a.id === assignment.attendeeId) || null;
+
+    // First try to find the attendee from the assignment data (from API)
+    if (assignment?.attendee?.id) {
+      return {
+        id: assignment.attendee.id,
+        firstName: assignment.attendee.firstName || '',
+        lastName: assignment.attendee.lastName || '',
+        email: assignment.attendee.email,
+        status: 'accepted',
+        eventId: eventId,
+      };
+    }
+
+    // Fallback: find attendee from eligibleAttendees list
+    if (assignment?.attendeeId && Array.isArray(eligibleAttendees)) {
+      return eligibleAttendees.find(a => a.id === assignment.attendeeId) || null;
+    }
+
+    return null;
   };
 
   const handleAssignGuest = async (roomId: string, slot: 1 | 2 | 3, attendee: AttendeeLite | null) => {
     try {
+      console.log('handleAssignGuest called:', { roomId, slot, attendee: attendee?.id, hasAttendee: !!attendee });
+
       if (attendee) {
+        const payload = { roomId, slot, attendeeId: attendee.id };
+        console.log('Assigning with payload:', payload);
         await assignRoomMutation.mutateAsync({
           eventId,
-          assignment: { roomId, slot, attendeeId: attendee.id },
+          assignment: payload,
         });
       } else {
+        console.log('Clearing assignment for:', { roomId, slot });
         await clearAssignmentMutation.mutateAsync({
           eventId,
           assignment: { roomId, slot },
@@ -48,6 +70,7 @@ export function RoomTable({ rooms, eligibleAttendees, eventId, isLoading }: Room
       }
     } catch (error) {
       console.error('Failed to assign guest:', error);
+      throw error; // Re-throw to show error in UI
     } finally {
       setActivePicker(null);
     }
@@ -84,11 +107,11 @@ export function RoomTable({ rooms, eligibleAttendees, eventId, isLoading }: Room
 
   const handleDeleteSelected = async () => {
     if (selectedRooms.size === 0) return;
-    
+
     try {
-      await deleteRoomsMutation.mutateAsync({ 
-        eventId, 
-        roomIds: Array.from(selectedRooms) 
+      await deleteRoomsMutation.mutateAsync({
+        eventId,
+        roomIds: Array.from(selectedRooms)
       });
       setSelectedRooms(new Set());
     } catch (error) {
@@ -127,6 +150,11 @@ export function RoomTable({ rooms, eligibleAttendees, eventId, isLoading }: Room
                 Delete ({selectedRooms.size})
               </button>
             )}
+            <ExportPdfButton
+              rooms={rooms}
+              eligibleAttendees={eligibleAttendees}
+              eventName={`Event ${eventId}`}
+            />
             <button
               onClick={() => setIsAddDialogOpen(true)}
               className="flex items-center gap-2 px-3 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
@@ -182,8 +210,8 @@ export function RoomTable({ rooms, eligibleAttendees, eventId, isLoading }: Room
               </thead>
               <tbody>
                 {rooms.map((room) => (
-                  <tr 
-                    key={room.id} 
+                  <tr
+                    key={room.id}
                     className={cn(
                       "border-b border-gray-100 hover:bg-gray-50 transition-colors",
                       selectedRooms.has(room.id) && "bg-blue-50"
@@ -210,7 +238,7 @@ export function RoomTable({ rooms, eligibleAttendees, eventId, isLoading }: Room
                     <td className="py-4 px-4">
                       <span className="text-gray-700">{room.maxGuests}</span>
                     </td>
-                    
+
                     {/* Guest 1 */}
                     <td className="py-4 px-4">
                       <GuestCell
@@ -223,7 +251,7 @@ export function RoomTable({ rooms, eligibleAttendees, eventId, isLoading }: Room
                         isDisabled={room.maxGuests < 1}
                       />
                     </td>
-                    
+
                     {/* Guest 2 */}
                     <td className="py-4 px-4">
                       <GuestCell
@@ -236,7 +264,7 @@ export function RoomTable({ rooms, eligibleAttendees, eventId, isLoading }: Room
                         isDisabled={room.maxGuests < 2}
                       />
                     </td>
-                    
+
                     {/* Guest 3 */}
                     <td className="py-4 px-4">
                       <GuestCell
@@ -249,7 +277,7 @@ export function RoomTable({ rooms, eligibleAttendees, eventId, isLoading }: Room
                         isDisabled={room.maxGuests < 3}
                       />
                     </td>
-                    
+
                     <td className="py-4 px-4">
                       <StatusChip status={room.status} />
                     </td>
@@ -348,7 +376,7 @@ function GuestCell({ room: _room, slot: _slot, attendee, isActive, onActivate, o
           </div>
         )}
       </button>
-      
+
       {attendee && (
         <button
           onClick={(e) => {

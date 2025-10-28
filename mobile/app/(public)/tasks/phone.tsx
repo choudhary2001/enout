@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { api } from '../../../src/lib/api';
 import { PhoneOtpForm } from '../../../src/components/FormFields/PhoneOtpForm';
+import { storage } from '../../../src/lib/storage';
 
 // Phone OTP validation schema
 const phoneOtpSchema = z.object({
@@ -19,7 +20,7 @@ export default function PhoneVerificationScreen() {
   const { phoneNumber: paramPhoneNumber } = useLocalSearchParams<{ phoneNumber: string }>();
   const [phoneNumber, setPhoneNumber] = useState(paramPhoneNumber || '+1234567890');
   const [isRequestingOtp, setIsRequestingOtp] = useState(false);
-  
+
   const {
     control,
     handleSubmit,
@@ -27,14 +28,17 @@ export default function PhoneVerificationScreen() {
   } = useForm<PhoneOtpFormData>({
     resolver: zodResolver(phoneOtpSchema),
     defaultValues: {
-      code: '',
+      code: '', // Empty by default - user must enter OTP from SMS
     },
   });
 
   useEffect(() => {
-    // Request OTP when screen loads
-    requestPhoneOtp();
-  }, []);
+    // Set the phone number from params if available
+    if (paramPhoneNumber) {
+      setPhoneNumber(paramPhoneNumber);
+      console.log('Phone number set from params:', paramPhoneNumber);
+    }
+  }, [paramPhoneNumber]);
 
   const requestPhoneOtp = async () => {
     try {
@@ -51,11 +55,25 @@ export default function PhoneVerificationScreen() {
 
   const onSubmit = async (data: PhoneOtpFormData) => {
     try {
-      const response = await api.verifyPhone({ code: data.code });
-      
+      const response = await api.verifyPhone({
+        code: data.code,
+        phone: phoneNumber
+      });
+
       if (response.ok) {
-        // Navigate back to tasks screen to show completed status
-        router.replace('/(public)/tasks');
+        // Set flag that user has verified phone through mobile app (user-specific)
+        const userEmail = await storage.getItem('auth_email');
+        const userSpecificKey = userEmail ? `user_verified_phone_${userEmail}` : 'user_verified_phone';
+        await storage.setItem(userSpecificKey, 'true');
+        console.log('Phone verification successful - setting user-specific flag:', userSpecificKey);
+
+        Alert.alert('Success', 'Phone verification successful!');
+        // Small delay to ensure API updates are reflected
+        setTimeout(() => {
+          router.replace('/(public)/tasks');
+        }, 100);
+      } else {
+        Alert.alert('Error', response.message || 'Invalid phone code. Please try again.');
       }
     } catch (error) {
       if (error instanceof Error) {

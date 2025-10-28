@@ -12,6 +12,7 @@ import { MobileModule } from './modules/mobile/mobile.module';
 import { EmailModule } from './modules/email/email.module';
 import { RedisModule } from './modules/cache/redis.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { RoomsModule } from './modules/rooms/rooms.module';
 import { AppConfig } from './config/app.config';
 
 @Module({
@@ -31,8 +32,9 @@ import { AppConfig } from './config/app.config';
     EmailModule,
     RedisModule,
     AdminModule,
+    RoomsModule,
   ],
   providers: [AppConfig],
   exports: [AppConfig],
 })
-export class AppModule {}
+export class AppModule { }

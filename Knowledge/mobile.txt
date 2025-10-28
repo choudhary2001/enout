@@ -1,0 +1,233 @@
+ENOUT MOBILE APP - TECHNICAL DOCUMENTATION
+==========================================
+
+OVERVIEW
+--------
+React Native mobile app built with Expo Router 6.x for event attendees.
+Package: com.enout.mobile
+Target Platforms: Android (APK), iOS (IPA)
+
+TECHNOLOGY STACK
+----------------
+- Expo SDK: ~54.0.10
+- React: 19.1.0
+- React Native: 0.81.4
+- Expo Router: ~6.0.8
+- State Management: Zustand, TanStack Query
+- Forms: React Hook Form + Zod validation
+- Storage: Expo Secure Store (tokens), AsyncStorage (user data)
+
+FILE STRUCTURE
+--------------
+mobile/
+  app/ - Expo Router app directory (file-based routing)
+    _layout.tsx - Root layout with QueryClientProvider
+    index.tsx - Splash/redirect screen
+    (public)/ - Public/unauthenticated routes
+      splash.tsx - Initial splash screen
+      email.tsx - Email entry for invitation
+      otp.tsx - OTP verification
+      tasks/ - Registration task flow
+        index.tsx - Task list
+        id.tsx - ID upload
+        form.tsx - Registration form
+        phone-input.tsx - Phone entry
+        phone.tsx - Phone OTP verification
+    (app)/ - Authenticated routes
+      inbox/ - Messages
+      schedule/ - Event schedule
+      profile/ - User profile
+  src/
+    components/ - Reusable components
+    lib/ - Core libraries
+      api.ts - API client wrapper
+      config.ts - API configuration
+      http.ts - HTTP client
+      storage.ts - Storage abstraction
+      useAuthGate.ts - Authentication flow logic
+  assets/ - Images, icons, splash screens
+
+AUTHENTICATION FLOW
+--------------------
+1. Splash screen redirects to email entry
+2. User enters email and receives invitation
+3. Email verified, proceed to OTP entry
+4. OTP verified, user lands on tasks screen
+5. Complete tasks (ID upload, form, phone verification)
+6. Phone verified via OTP in app
+7. All tasks complete, user enters authenticated app
+
+KEY COMPONENTS
+--------------
+
+TasksScreen:
+- Tracks task completion status
+- Integrates with backend API for profile data
+- Updates UI based on user progress
+- Prevents navigation to completed tasks
+
+PhoneOtpForm:
+- Handles phone number input with country code
+- Sends OTP via API
+- Verifies OTP and stores verification flag
+- User-specific verification tracking
+
+UploadIdCard:
+- Document picker integration
+- Image compression before upload
+- Progress indicator
+- Error handling and retry logic
+
+RegistrationForm:
+- Multi-step form with React Hook Form
+- Zod schema validation
+- Field-level error messages
+- Save and resume capability
+
+MessageCard:
+- Displays messages from event organizers
+- Mark as read functionality
+- Attachment display
+- Link handling
+
+ScheduleList:
+- Event schedule display
+- Session details modal
+- Date filtering
+- All-day event handling
+
+API INTEGRATION
+---------------
+Base URL: Configurable via EXPO_PUBLIC_API_URL
+Default: http://localhost:3003
+
+Endpoints:
+- POST /api/auth/otp/send - Send OTP to email
+- POST /api/auth/otp/verify - Verify OTP code
+- POST /api/auth/phone/request-otp - Request phone OTP
+- POST /api/auth/phone/verify-otp - Verify phone OTP
+- GET /api/events/{eventId}/profile - Get attendee profile
+- POST /api/events/{eventId}/upload-documents - Upload ID
+- GET /api/events/{eventId}/mobile-messages - Get messages
+- GET /api/events/{eventId}/schedule - Get schedule
+
+STATIONARY MANAGEMENT
+---------------------
+Uses Expo Secure Store for sensitive data:
+- Authentication tokens
+- User email
+
+Uses AsyncStorage for:
+- User verification flags
+- Task completion status
+- Profile cache
+
+BUILD CONFIGURATION
+-------------------
+
+app.json:
+- Package: com.enout.mobile
+- Version: 1.0.0
+- Bundle ID: com.enout.mobile (iOS)
+- Splash background: #F9B24E
+- Icon: assets/icon.png
+- Adaptive icon: assets/adaptive-icon.png
+
+babel.config.js:
+- Expo preset
+- Expo Router plugin
+- React Native Reanimated plugin
+
+metro.config.js:
+- Default Expo Metro configuration
+
+eas.json:
+- Development profile with dev client
+- Preview profile with APK output
+- Production profile with APK/AAB output
+
+BUILDING FOR ANDROID
+---------------------
+
+Method 1 - Local APK:
+1. Run: ./build-android.sh
+2. Output: mobile/enout-mobile.apk
+
+Method 2 - EAS Build:
+1. Run: npx eas build --platform android --profile preview
+2. Download APK from EAS dashboard
+
+Method 3 - Development Build:
+1. Run: pnpm start
+2. Connect device via USB or scan QR with Expo Go
+
+Method 4 - Production Build (AAB):
+1. Run: npx eas build --platform android --profile production
+2. Upload to Google Play Console
+
+DEPLOYMENT
+----------
+APK Distribution:
+- Direct download via website
+- OTA updates via Expo Updates
+- Email distribution
+
+Google Play Store:
+- Generate signed AAB
+- Upload to Play Console
+- Submit for review
+- Publish to production
+
+Environment Variables:
+- EXPO_PUBLIC_API_URL: API base URL
+- EXPO_PUBLIC_DEFAULT_EVENT_ID: Default event ID for testing
+
+KNOWN ISSUES FIXED
+------------------
+1. Boolean casting error (String cannot be cast to Boolean)
+   - Root Cause: Missing babel and metro configuration files
+   - Fixed: Added babel.config.js with Expo Router and Reanimated plugins
+   - Fixed: Added metro.config.js with default Expo Metro config
+   - Fixed: Added react-native-safe-area-context dependency (required by Expo)
+   - Fixed: Added react-native-reanimated plugin to app.json plugins array
+   - Fixed: Ensured all boolean props use proper boolean values not strings
+   
+2. Missing build configuration
+   - Fixed: Updated app.json with proper Android package (com.enout.mobile)
+   - Fixed: Added iOS bundle identifier (com.enout.mobile)
+   - Fixed: Created eas.json for EAS builds
+   - Fixed: Added build scripts to package.json
+   
+3. No APK build capability
+   - Fixed: Added build-android.sh script for local APK generation
+   - Fixed: Configured EAS build profiles (preview, production)
+   - Fixed: Added Android versionCode and package configuration
+
+PERFORMANCE OPTIMIZATIONS
+-------------------------
+1. Image compression before upload
+2. Lazy loading of screens
+3. Debounced API calls
+4. Optimistic UI updates
+5. Token refresh mechanism
+6. Background sync for messages
+
+TESTING
+-------
+Development Mode:
+- pnpm start - Start dev server
+- Press 'a' for Android emulator
+- Press 'i' for iOS simulator
+- Press 'w' for web browser
+
+Physical Device:
+- Connect via USB
+- Enable USB debugging
+- Run: pnpm android
+
+APK Testing:
+- Install APK on device
+- Test authentication flow
+- Verify all features
+- Check offline behavior
+

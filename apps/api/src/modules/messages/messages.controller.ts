@@ -7,7 +7,11 @@ import {
   Delete,
   Put,
   Query,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { MessagesService } from './messages.service';
 import { MessageDto, MessagesResponseDto } from './dto/message.dto';
@@ -16,7 +20,7 @@ import { MessageDto, MessagesResponseDto } from './dto/message.dto';
 @Controller('api/events/:eventId/messages')
 // @UseGuards(JwtAuthGuard) // Disabled for development
 export class MessagesController {
-  constructor(private readonly messagesService: MessagesService) {}
+  constructor(private readonly messagesService: MessagesService) { }
 
   @Get()
   @ApiOperation({ summary: 'Get all messages for an event' })
@@ -24,7 +28,7 @@ export class MessagesController {
   async getMessages(
     @Param('eventId') eventId: string,
     @Query('page') page = 1,
-    @Query('pageSize') pageSize = 10,
+    @Query('pageSize') pageSize = 100,
   ): Promise<MessagesResponseDto> {
     const messages = await this.messagesService.getMessages(eventId);
     const total = messages.length;
@@ -36,13 +40,17 @@ export class MessagesController {
       data: messages.slice(start, end).map(msg => ({
         id: msg.id,
         eventId: msg.eventId,
-        attendeeId: msg.attendeeId || undefined,
         title: msg.title,
         body: msg.body,
-        attachments: msg.attachments,
+        attachments: msg.attachments || [],
         status: msg.status,
-        unread: msg.unread,
+        deliveryStatus: 'delivered',
+        unread: false,
         createdAt: msg.createdAt,
+        // Broadcast-specific fields
+        audience: (msg as any).audience || 'all',
+        scheduledAt: (msg as any).scheduledAt || undefined,
+        sentAt: (msg as any).sentAt || undefined,
       })),
       total,
       page,
@@ -58,8 +66,13 @@ export class MessagesController {
     @Param('eventId') eventId: string,
     @Body() createMessageDto: any,
   ): Promise<MessageDto> {
-    const message = await this.messagesService.createMessage(eventId, createMessageDto);
-    return this.transformToDto(message);
+    try {
+      const message = await this.messagesService.createMessage(eventId, createMessageDto);
+      return this.transformToDto(message);
+    } catch (error) {
+      console.error('Error creating message:', error);
+      throw error;
+    }
   }
 
   @Get(':id')
@@ -95,16 +108,66 @@ export class MessagesController {
     await this.messagesService.deleteMessage(eventId, id);
   }
 
+  @Post(':id/send')
+  @ApiOperation({ summary: 'Send a message to all attendees' })
+  @ApiResponse({ status: 200, type: MessageDto })
+  async sendMessage(
+    @Param('eventId') eventId: string,
+    @Param('id') id: string,
+  ): Promise<MessageDto> {
+    const message = await this.messagesService.sendMessage(eventId, id);
+    return this.transformToDto(message);
+  }
+
+  @Post(':id/upload-attachments')
+  @UseInterceptors(FileInterceptor('file', {
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+    fileFilter: (req, file, callback) => {
+      // Allow all common file types for broadcasting
+      const allowed = [
+        // Images
+        'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico',
+        // Documents
+        'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf', 'odt', 'ods',
+        // Archives
+        'zip', 'rar', '7z', 'tar', 'gz',
+        // Audio/Video
+        'mp3', 'mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'ogg',
+        // Other
+        'csv', 'json', 'xml'
+      ];
+      const ext = file.originalname.split('.').pop()?.toLowerCase() || '';
+      if (allowed.includes(ext)) {
+        callback(null, true);
+      } else {
+        console.log('File type not allowed:', ext);
+        callback(new BadRequestException(`File type .${ext} is not allowed`), false);
+      }
+    }
+  }))
+  @ApiOperation({ summary: 'Upload attachment to a message' })
+  @ApiResponse({ status: 200, description: 'File uploaded successfully' })
+  async uploadAttachment(
+    @Param('eventId') eventId: string,
+    @Param('id') messageId: string,
+    @UploadedFile() file: any
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+    return this.messagesService.uploadAttachment(eventId, messageId, file);
+  }
+
   private transformToDto(message: any): MessageDto {
     return {
       id: message.id,
       eventId: message.eventId,
-      attendeeId: message.attendeeId || undefined,
       title: message.title,
-      body: message.body,
-      attachments: message.attachments,
+      body: message.body || message.bodyHtml,
+      attachments: message.attachments || [],
       status: message.status,
-      unread: message.unread,
+      deliveryStatus: 'delivered',
+      unread: false,
       createdAt: message.createdAt,
     };
   }

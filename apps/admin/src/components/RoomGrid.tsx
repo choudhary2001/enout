@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -49,7 +49,7 @@ function DraggableAttendee({ attendee }: { attendee: AttendeeType }) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium text-gray-900 truncate">
-          {attendee.firstName && attendee.lastName 
+          {attendee.firstName && attendee.lastName
             ? `${attendee.firstName} ${attendee.lastName}`
             : attendee.email
           }
@@ -68,7 +68,7 @@ function RoomCard({ room, assignedAttendees, onRemoveAttendee }: {
   const roomCapacity = room.capacity || room.maxGuests;
   const isOverCapacity = assignedAttendees.length > roomCapacity;
   const occupancyPercentage = (assignedAttendees.length / roomCapacity) * 100;
-  
+
   // Determine room status
   const getRoomStatus = (): 'Empty' | 'Partial' | 'Full' => {
     if (assignedAttendees.length === 0) return 'Empty';
@@ -109,10 +109,10 @@ function RoomCard({ room, assignedAttendees, onRemoveAttendee }: {
           <div
             className={cn(
               'h-2 rounded-full transition-all',
-              isOverCapacity 
-                ? 'bg-red-500' 
-                : occupancyPercentage > 80 
-                  ? 'bg-yellow-500' 
+              isOverCapacity
+                ? 'bg-red-500'
+                : occupancyPercentage > 80
+                  ? 'bg-yellow-500'
                   : 'bg-green-500'
             )}
             style={{ width: `${Math.min(occupancyPercentage, 100)}%` }}
@@ -145,7 +145,7 @@ function RoomCard({ room, assignedAttendees, onRemoveAttendee }: {
           <Users className="h-4 w-4" />
           Assigned ({assignedAttendees.length})
         </div>
-        
+
         <SortableContext items={assignedAttendees.map(a => a.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-2 min-h-[100px]">
             {assignedAttendees.map((attendee) => (
@@ -173,7 +173,7 @@ export function RoomGrid({ eventId }: RoomGridProps) {
   const { data: roomsData, isLoading: roomsLoading } = useQuery({
     queryKey: ['rooms', eventId],
     queryFn: async () => {
-      const response = await fetch(`/api/events/${eventId}/rooms`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/${eventId}/rooms`);
       if (!response.ok) {
         throw new Error('Failed to fetch rooms');
       }
@@ -184,7 +184,12 @@ export function RoomGrid({ eventId }: RoomGridProps) {
 
   const { data: attendees = [], isLoading: attendeesLoading } = useQuery({
     queryKey: ['attendees', eventId],
-    queryFn: () => api.getAttendees(eventId),
+    queryFn: async () => {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/events/${eventId}/invites?page=1&pageSize=100`);
+      if (!response.ok) throw new Error('Failed to fetch guests');
+      const data = await response.json();
+      return data.data || [];
+    },
   });
 
   // Handle both new and old room data formats
@@ -192,7 +197,7 @@ export function RoomGrid({ eventId }: RoomGridProps) {
 
   const [roomAssignments, setRoomAssignments] = useState<Record<string, string>>(() => {
     const assignments: Record<string, string> = {};
-    
+
     // Extract assignments from the new room data structure
     rooms.forEach(room => {
       if (room.assignments) {
@@ -201,20 +206,20 @@ export function RoomGrid({ eventId }: RoomGridProps) {
         });
       }
     });
-    
+
     // Also check legacy attendee data
     attendees.forEach(attendee => {
       if (attendee.roomId && !assignments[attendee.id]) {
         assignments[attendee.id] = attendee.roomId;
       }
     });
-    
+
     return assignments;
   });
 
   const getAssignedAttendees = (roomId: string) => {
     const room = rooms.find(r => r.id === roomId);
-    
+
     // If room has embedded assignments, use those
     if (room && room.assignments) {
       return room.assignments.map(assignment => ({
@@ -231,7 +236,7 @@ export function RoomGrid({ eventId }: RoomGridProps) {
         updatedAt: '',
       }));
     }
-    
+
     // Fallback to legacy attendee filtering
     return attendees.filter(attendee => roomAssignments[attendee.id] === roomId);
   };
@@ -246,12 +251,12 @@ export function RoomGrid({ eventId }: RoomGridProps) {
         });
       }
     });
-    
+
     // Add legacy assignments
     Object.keys(roomAssignments).forEach(attendeeId => {
       assignedIds.add(attendeeId);
     });
-    
+
     // Return attendees that are not assigned
     return attendees.filter(attendee => !assignedIds.has(attendee.id));
   };
@@ -273,7 +278,7 @@ export function RoomGrid({ eventId }: RoomGridProps) {
     if (rooms.some(room => room.id === roomId)) {
       const room = rooms.find(r => r.id === roomId);
       const currentAssignments = getAssignedAttendees(roomId);
-      
+
       // Check capacity constraint
       const roomCapacity = room?.capacity || room?.maxGuests;
       if (room && roomCapacity && currentAssignments.length >= roomCapacity) {
@@ -345,7 +350,7 @@ export function RoomGrid({ eventId }: RoomGridProps) {
                 <Home className="h-5 w-5" />
                 <span className="font-medium">Drop attendees here to unassign</span>
               </div>
-              
+
               <SortableContext items={getUnassignedAttendees().map(a => a.id)} strategy={verticalListSortingStrategy}>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {getUnassignedAttendees().map((attendee) => (
@@ -359,8 +364,8 @@ export function RoomGrid({ eventId }: RoomGridProps) {
 
         <DragOverlay>
           {activeId ? (
-            <DraggableAttendee 
-              attendee={attendees.find(a => a.id === activeId)!} 
+            <DraggableAttendee
+              attendee={attendees.find(a => a.id === activeId)!}
             />
           ) : null}
         </DragOverlay>

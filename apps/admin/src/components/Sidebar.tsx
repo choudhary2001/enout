@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { 
-  Calendar, 
-  Users, 
-  Home, 
+import {
+  Calendar,
+  Users,
+  Home,
   MessageSquare,
   Menu,
   X
@@ -42,7 +42,7 @@ export function Sidebar() {
 
       {/* Mobile overlay */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
           onClick={() => setIsMobileMenuOpen(false)}
           onKeyDown={(e) => {
@@ -88,16 +88,6 @@ export function Sidebar() {
               );
             })}
           </nav>
-
-          {/* Environment badge */}
-          <div className="px-4 py-4 border-t border-gray-200">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-500">Environment</span>
-              <span className="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                Development
-              </span>
-            </div>
-          </div>
         </div>
       </div>
     </>

@@ -4,13 +4,13 @@
 
 import { env } from './env';
 import { apiClient } from './api-client';
-import { 
-  EventType, 
-  ItineraryItemType, 
-  AttendeeType, 
-  MessageType, 
+import {
+  EventType,
+  ItineraryItemType,
+  AttendeeType,
+  MessageType,
   RoomType,
-  UserType 
+  UserType
 } from '@enout/shared';
 
 /**
@@ -20,7 +20,7 @@ export function calculateEventStatus(startDate: string, endDate: string): 'pendi
   const now = new Date();
   const start = new Date(startDate);
   const end = new Date(endDate);
-  
+
   if (now < start) return 'pending';
   if (now > end) return 'complete';
   return 'in_progress';
@@ -59,6 +59,16 @@ export const api = {
     return apiClient.del<void>(`/api/admin/events/${id}`);
   },
 
+  async uploadEventImage(id: string, file: File): Promise<{ success: boolean; imageUrl: string; event: EventType }> {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    return apiClient.postFormData<{ success: boolean; imageUrl: string; event: EventType }>(
+      `/api/admin/events/${id}/upload-image`,
+      formData
+    );
+  },
+
   // Schedule/Itinerary
   async getSchedule(eventId: string): Promise<ItineraryItemType[]> {
     const response = await apiClient.get<{ data: any[] }>(`/api/events/${eventId}/schedule`);
@@ -81,7 +91,7 @@ export const api = {
       start: data.startTime ? new Date(data.startTime).toISOString() : undefined,
       end: data.endTime ? new Date(data.endTime).toISOString() : undefined,
     };
-    
+
     return apiClient.post<ItineraryItemType>(`/api/events/${eventId}/schedule`, backendData);
   },
 
@@ -94,7 +104,7 @@ export const api = {
       color: data.color,
       allDay: data.allDay,
     };
-    
+
     // Only include start/end if they exist
     if (data.startTime) {
       backendData.start = new Date(data.startTime).toISOString();
@@ -102,7 +112,7 @@ export const api = {
     if (data.endTime) {
       backendData.end = new Date(data.endTime).toISOString();
     }
-    
+
     return apiClient.patch<ItineraryItemType>(`/api/events/${eventId}/schedule/${itemId}`, backendData);
   },
 
@@ -134,16 +144,16 @@ export const api = {
   async importGuests(eventId: string, file: File): Promise<{ imported: number; failed: number }> {
     const formData = new FormData();
     formData.append('file', file);
-    
+
     const response = await fetch(`${env.apiUrl}/api/events/${eventId}/invites/import`, {
       method: 'POST',
       body: formData,
     });
-    
+
     if (!response.ok) {
       throw new Error(`Import failed: ${response.statusText}`);
     }
-    
+
     return response.json();
   },
 
@@ -194,8 +204,34 @@ export const api = {
     return apiClient.post<void>(`/api/events/${eventId}/rooms/${roomId}/unassign`, { guestId });
   },
 
+  async uploadMessageAttachment(
+    eventId: string,
+    messageId: string,
+    file: File
+  ): Promise<{ success: boolean; fileUrl: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_auth_token') : null;
+    const headers: HeadersInit = {};
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const response = await fetch(
+      `${env.apiUrl}/api/events/${eventId}/messages/${messageId}/upload-attachments`,
+      { method: 'POST', headers, body: formData }
+    );
+
+    if (!response.ok) {
+      throw new Error('File upload failed');
+    }
+
+    return response.json();
+  },
+
   // User
   async getCurrentUser(): Promise<UserType> {
-    return apiClient.get<UserType>('/api/user');
+    return apiClient.get<UserType>('/api/admin/auth/profile');
   },
 };

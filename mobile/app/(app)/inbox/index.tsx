@@ -5,13 +5,18 @@ import { api } from '../../../src/lib/api';
 
 interface Message {
   id: string;
-  subject: string;
-  snippet: string;
-  sentAt: string;
+  title: string; // API returns 'title' not 'subject'
+  body: string; // API returns 'body' not 'snippet'
+  createdAt: string; // API returns 'createdAt' not 'sentAt'
   unread: boolean;
-  attachmentsCount: number;
-  sender: string;
-  avatar: string;
+  attachments?: Record<string, any>; // API returns 'attachments' object
+  // Computed fields for display
+  subject?: string;
+  snippet?: string;
+  sentAt?: string;
+  attachmentsCount?: number;
+  sender?: string;
+  avatar?: string;
 }
 
 export default function InboxScreen() {
@@ -26,12 +31,42 @@ export default function InboxScreen() {
 
   const loadMessages = async () => {
     try {
+      console.log('Loading messages...');
       const response = await api.listMessages();
-      if (response.items) {
-        setMessages(response.items);
+
+      console.log('Messages API response:', response);
+
+      if (response.ok && response.data) {
+        // New API format - map the response data properly
+        const apiData = response.data as any;
+        const rawMessages = apiData.data || apiData || [];
+
+        // Map API message format to UI format
+        const mappedMessages: Message[] = rawMessages.map((msg: any) => ({
+          id: msg.id || '',
+          title: msg.title || '',
+          body: msg.body || '',
+          createdAt: msg.createdAt || '',
+          unread: msg.unread || false,
+          attachments: Array.isArray(msg.attachments) ? msg.attachments : [],
+          // Map to display fields
+          subject: msg.title || '',
+          snippet: msg.body || '',
+          sentAt: msg.createdAt ? new Date(msg.createdAt).toLocaleString() : '',
+          attachmentsCount: Array.isArray(msg.attachments) ? msg.attachments.length : 0,
+          sender: 'Event Organizer', // Default sender for now
+          avatar: 'E',
+        }));
+
+        console.log('Mapped messages:', mappedMessages);
+        setMessages(mappedMessages);
+      } else {
+        console.error('Messages API response not OK:', response.message);
+        setMessages([]);
       }
     } catch (error) {
       console.error('Error loading messages:', error);
+      setMessages([]);
     } finally {
       setLoading(false);
     }
@@ -60,17 +95,21 @@ export default function InboxScreen() {
             </Text>
           </View>
         </View>
-        
+
         <View style={styles.messageDetails}>
           <View style={styles.messageHeader}>
-            <Text style={styles.senderName}>{item.sender || 'Unknown'}</Text>
-            <Text style={styles.timestamp}>{item.sentAt || 'Unknown time'}</Text>
+            <Text style={styles.senderName} numberOfLines={1} ellipsizeMode="tail">
+              {item.sender || 'Unknown'}
+            </Text>
+            <Text style={styles.timestamp} numberOfLines={1}>
+              {item.sentAt || 'Unknown time'}
+            </Text>
           </View>
-          <Text style={styles.messageSnippet} numberOfLines={2}>
+          <Text style={styles.messageSnippet} numberOfLines={2} ellipsizeMode="tail">
             {item.snippet || 'No message content'}
           </Text>
         </View>
-        
+
         {item.unread && (
           <View style={styles.newBadge}>
             <Text style={styles.newBadgeText}>New</Text>
@@ -118,16 +157,16 @@ export default function InboxScreen() {
           <Text style={styles.navIcon}>✉️</Text>
           <Text style={[styles.navLabel, styles.activeNavLabel]}>Mail</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.navItem}
           onPress={() => router.push('/(app)/schedule')}
         >
           <Text style={styles.navIcon}>🕐</Text>
           <Text style={styles.navLabel}>Schedule</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.navItem}
           onPress={() => router.push('/(app)/profile')}
         >
@@ -239,18 +278,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1a202c',
     letterSpacing: 0.3,
+    flex: 1,
+    marginRight: 8,
+    maxWidth: '70%',
   },
   timestamp: {
     fontSize: 13,
     color: '#64748b',
     fontWeight: '600',
     letterSpacing: 0.2,
+    flexShrink: 0,
+    maxWidth: '30%',
   },
   messageSnippet: {
     fontSize: 15,
     color: '#475569',
     lineHeight: 22,
     fontWeight: '500',
+    maxWidth: '100%',
   },
   newBadge: {
     backgroundColor: '#10b981',
