@@ -1,0 +1,34 @@
+TASKS/INDEX.TSX - TASK LIST SCREEN
+===================================
+
+PURPOSE
+-------
+Main task screen displaying registration tasks:
+- Upload ID Card
+- Registration Form  
+- Phone Verification
+
+Each task shows completion status and navigates to task-specific screens when tapped.
+
+SCROLLVIEW FIXES
+----------------
+Fixed scrolling issues by:
+- Added contentContainerStyle to ScrollView with proper padding
+- Separated container style (flex:1) from content style (padding)
+- Added showsVerticalScrollIndicator for better UX
+
+SCROLLVIEW STRUCTURE
+--------------------
+<ScrollView 
+  style={styles.content}          // flex: 1
+  contentContainerStyle={styles.scrollContent}  // padding: 16, paddingBottom: 20
+  showsVerticalScrollIndicator={true}
+>
+
+FIXES IMPLEMENTED
+-----------------
+2025-10-29: Fixed ScrollView scrolling
+- Added contentContainerStyle with proper padding
+- Separated container flex styling from content padding
+- Improved scroll indicator visibility
+

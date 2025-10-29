@@ -1,0 +1,89 @@
+MOBILE PACKAGE.JSON - CONFIGURATION DOCUMENTATION
+==================================================
+
+FILE: mobile/package.json
+LAST UPDATED: 2025-10-29
+
+OVERVIEW
+--------
+Package configuration for Enout mobile app (Expo/React Native).
+Package name: mobile
+Version: 1.0.0
+
+SCRIPTS
+-------
+- start: expo start - Start Expo development server
+- android: expo start --android - Start Expo with Android target
+- ios: expo start --ios - Start Expo with iOS target
+- web: expo start --web - Start Expo with web target
+- build:android: eas build --platform android --profile preview - Build preview APK via EAS
+- build:android:prod: eas build --platform android --profile production - Build production APK via EAS
+- build:apk: eas build --platform android --profile preview --local - Build APK locally
+
+DEPENDENCIES
+------------
+Core:
+- expo: ~54.0.10 - Expo SDK framework
+- react: 19.1.0 - React library
+- react-native: 0.81.4 - React Native runtime
+- expo-router: ~6.0.8 - File-based routing for Expo
+
+State Management:
+- @tanstack/react-query: ^5.90.2 - Server state management
+- zustand: ^5.0.8 - Client state management
+
+Forms & Validation:
+- react-hook-form: ^7.63.0 - Form handling
+- @hookform/resolvers: ^5.2.2 - Validation resolvers
+- zod: ^3.25.76 - Schema validation
+
+Native Modules:
+- expo-secure-store: ^15.0.7 - Secure token storage
+- expo-image-picker: ^17.0.8 - Image selection
+- expo-document-picker: ^14.0.7 - Document selection
+- react-native-reanimated: ~3.10.1 - Animations
+- react-native-safe-area-context: ^5.4.0 - Safe area handling (UPDATED 2025-10-29)
+- react-native-web: ^0.21.0 - Web support
+- expo-status-bar: ~3.0.8 - Status bar control
+
+DEV DEPENDENCIES
+----------------
+- @babel/core: ^7.20.0 - Babel transpiler
+- @types/react: ~19.1.0 - TypeScript types for React
+- typescript: ~5.9.2 - TypeScript compiler
+
+VERSION UPDATES
+---------------
+2025-10-29:
+- Updated react-native-safe-area-context from 4.10.5 to ^5.4.0
+- Reason: Fix peer dependency conflict with expo-router@6.0.14
+- expo-router requires react-native-safe-area-context >= 5.4.0
+- Installation: npm install --legacy-peer-deps
+
+DEPENDENCY NOTES
+----------------
+- react-native-safe-area-context@^5.4.0: Required by expo-router for safe area handling
+- react-native-reanimated: Must be configured last in babel.config.js plugins array
+- expo-router: File-based routing requires app/ directory structure
+
+INSTALLATION
+------------
+1. Navigate to mobile/ directory
+2. Run: npm install --legacy-peer-deps
+3. Dependencies will be installed in node_modules/
+
+BUILD REQUIREMENTS
+------------------
+- Node.js 18+
+- npm or pnpm package manager
+- Android Studio (for Android builds)
+- Xcode (for iOS builds, macOS only)
+- EAS CLI (optional, for cloud builds)
+
+PERFORMANCE CONSIDERATIONS
+--------------------------
+- Total packages: ~746 packages
+- Bundle size optimization: Code splitting via Expo Router
+- Lazy loading: Screens loaded on demand
+- Image optimization: expo-image-picker with compression
+

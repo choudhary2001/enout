@@ -1,0 +1,237 @@
+ENOUT EVENT MANAGEMENT SYSTEM - INFORMATION ARCHITECTURE
+========================================================
+
+SYSTEM OVERVIEW
+---------------
+Production-grade event management platform supporting 1M+ users with high concurrency, low CPU, low memory footprint.
+
+SERVICES & PORTS
+----------------
+1. API Service
+   - Port: 3003 (FIXED)
+   - Purpose: Backend REST API, NestJS framework
+   - Endpoints: /api/* (health, auth, events, guests, rooms, messages, schedule)
+   - Startup: `cd apps/api && npm run start:dev`
+   
+2. Admin Web App
+   - Port: 3001 (FIXED)
+   - Purpose: Admin dashboard, event management UI
+   - Technology: Next.js 14, React, Tailwind CSS
+   - Startup: `cd apps/admin && npm run dev`
+   
+3. Mobile App
+   - Platform: Android/iOS via Expo
+   - Purpose: Attendee mobile app
+   - Package: com.enout.mobile
+   - Build: `./build-android.sh` or `npx eas build --platform android`
+
+ARCHITECTURE
+------------
+Monorepo structure with pnpm workspaces:
+- apps/api: NestJS backend
+- apps/admin: Next.js admin dashboard
+- mobile: React Native/Expo mobile app
+- packages/shared: Shared TypeScript types
+- packages/ui: Shared UI components
+- packages/eslint-config: Shared linting rules
+
+HOW TO RUN SERVICES
+-------------------
+
+API Service:
+1. Navigate to apps/api
+2. Install dependencies: npm install (or pnpm install)
+3. Set up database: npx prisma migrate dev
+4. Seed data: npx prisma db seed
+5. Start: npm run start:dev
+6. API available at http://localhost:3003
+
+Admin Web:
+1. Navigate to apps/admin
+2. Install: npm install (or pnpm install)
+3. Start: npm run dev
+4. Access at http://localhost:3001
+
+Mobile App (Development):
+1. Navigate to mobile/
+2. Install: npm install --legacy-peer-deps
+3. Start Android: npx expo start --android
+4. Or start general: npm start, then press 'a' for Android
+5. Scan QR with Expo Go app or use connected device/emulator
+
+Mobile App (Production APK):
+1. Navigate to mobile/
+2. Run: ./build-android.sh
+3. APK output: mobile/enout-mobile.apk
+
+HOW EACH SERVICE WORKS
+----------------------
+
+API Service:
+- Framework: NestJS with Prisma ORM
+- Database: PostgreSQL via Prisma
+- Authentication: JWT-based (admin and mobile endpoints)
+- Modules:
+  * Auth: OTP generation, verification (email, phone, Twilio)
+  * Events: CRUD operations, filtering, pagination
+  * Guests/Attendees: Profile management, bulk operations
+  * Rooms: Room assignment, guest-cell mapping
+  * Messages: SMS/email notifications
+  * Schedule: Session management
+- Performance: Connection pooling, query optimization, Redis caching (optional)
+
+Admin Web:
+- Framework: Next.js 14 with App Router
+- State Management: TanStack Query (React Query)
+- UI: Tailwind CSS via CDN
+- Features:
+  * Event dashboard with calendar view
+  * Guest management with bulk import
+  * Room assignment interface
+  * Message composer and history
+  * Schedule management
+- Real-time updates via polling
+
+Mobile App:
+- Framework: Expo Router 6.x with React Native
+- Authentication: Secure store-based token management
+- Features:
+  * Event registration flow
+  * ID card upload
+  * Phone verification via OTP
+  * Inbox for messages
+  * Schedule viewing
+  * Profile management
+
+DATA SCHEMA
+-----------
+PostgreSQL Database (via Prisma):
+
+Events:
+- id, name, description, startDate, endDate, location, status, createdAt, updatedAt
+
+Guests:
+- id, firstName, lastName, email, phone, phoneCode, gender, dob, phoneVerified, idDocUrl, eventId, inviteId
+
+Rooms:
+- id, name, building, floor, eventId, guestId, status, updatedAt
+
+Messages:
+- id, eventId, recipientEmail, recipientPhone, templateType, status, scheduledFor, sentAt, createdAt, subject, body
+
+Schedule Items:
+- id, eventId, title, description, startTime, endTime, location, allDay, createdAt, updatedAt
+
+Invites:
+- id, eventId, email, status, acceptedAt, createdAt, updatedAt
+
+Attendee Profiles (Mobile):
+- Additional fields for registered attendees with document uploads
+
+MASTER METHODS
+--------------
+
+API Service:
+1. Event Pipeline: CRUD with status management and validation
+2. Guest Import: Bulk CSV import with deduplication
+3. Room Assignment: Automatic room allocation algorithm
+4. Message Pipeline: Template-based notifications via Twilio/Email
+5. Auth Pipeline: Multi-method OTP (email, phone) with rate limiting
+6. Attendee Verification: Document upload and verification workflow
+
+Admin Web:
+1. Event Dashboard: Calendar integration, stats aggregation
+2. Guest Management: Table with filters, search, bulk operations
+3. Room Grid: Visual room assignment interface
+4. Message Composer: Scheduled message delivery
+5. Data Export: PDF generation for reports
+
+Mobile App:
+1. Auth Gate: Multi-step authentication flow (email, OTP, invite)
+2. Task Management: Registration completion tracking
+3. Document Upload: ID card upload with validation
+4. Profile Sync: Real-time profile updates
+5. Message Inbox: Push notification support
+
+PERFORMANCE & SCALING
+---------------------
+Target: 1 million users with high concurrency
+
+API Optimizations:
+- Database connection pooling (pgBouncer)
+- Query optimization with indexes
+- Pagination for all list endpoints
+- Caching layer (Redis) for frequently accessed data
+- Rate limiting on auth endpoints
+- Async message processing
+
+Frontend Optimizations:
+- Code splitting and lazy loading
+- Image optimization and CDN
+- Virtual scrolling for large lists
+- Debounced search inputs
+- Optimistic UI updates
+
+Mobile Optimizations:
+- Secure token storage
+- Offline-first architecture
+- Image compression before upload
+- Background sync for messages
+- Minimal bundle size
+
+ASSUMPTIONS
+-----------
+1. PostgreSQL database with proper indexes
+2. Twilio account for SMS (production)
+3. SMTP server for email delivery
+4. HTTPS in production
+5. Expo EAS account for mobile builds
+6. Redis for caching (optional but recommended)
+
+KNOWN ISSUES RESOLVED
+--------------------
+1. Boolean casting error in mobile app - fixed by adding babel/metro config
+2. Missing Expo configuration - added app.json with proper Android/iOS settings
+3. Build script missing - created build-android.sh
+4. APK generation - configured via EAS and local build
+
+UPDATES (LATEST)
+---------------
+- 2025-10-29: Fixed dependency conflict, Reanimated plugin error, Android emulator setup, and disk space issues
+  * Fixed react-native-safe-area-context version conflict (4.10.5 -> ^5.4.0)
+  * Updated to satisfy expo-router@6.0.14 peer dependency (requires >=5.4.0)
+  * Installed dependencies using npm with --legacy-peer-deps flag
+  * Fixed Reanimated Babel plugin error (removed duplicate from app.json)
+  * Android emulator configured and running (Pixel_3a_API_34)
+  * Resolved "No space left on device" error by:
+    - Removing native Android build directory
+    - Cleaning Gradle caches (~997MB freed)
+    - Switching to Expo Go approach (no native build required)
+  * Expo server running in development mode
+  * Fixed Watchman permission errors by:
+    - Created start-android.sh script with Watchman disabled
+    - Updated metro.config.js to limit watch scope
+    - Updated .watchmanconfig to ignore parent directories
+ }"
+  * Fixed react-native-reanimated worklets error:
+   腐烂    - Downgraded from 4.1.1 to 3.15.0 (compatible with Expo 54)
+    - Removed worklets dependency (not needed for v3)
+  * Fixed boolean casting error:
+    - Removed edgeToEdgeEnabled and predictiveBackGestureEnabled from app.json
+    - These Android properties can cause String to Boolean casting errors
+  * Use: cd mobile && ./start-android.sh (then connect via Expo Go app)
+  
+- 2025-01-XX: Fixed mobile app build errors and APK generation
+- Created babel.config.js with Expo Router and Reanimated plugins
+- Created metro.config.js with default Expo Metro configuration
+- Updated app.json with proper Android/iOS configuration
+  * Package: com.enout.mobile
+  * Bundle ID: com.enout.mobile
+  * Added react-native-reanimated plugin
+- Added react-native-safe-area-context (required dependency)
+- Created eas.json for EAS cloud builds (preview/production profiles)
+- Created build-android.sh for local APK generation
+- Fixed "String cannot be cast to Boolean" error in native views
+- Added proper babel plugin order (Reanimated plugin must be last)
+- Configured Android build with proper versionCode and package name
+

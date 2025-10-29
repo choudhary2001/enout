@@ -1,0 +1,50 @@
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { View, Text } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { DevDataBanner } from '../src/components/DevDataBanner';
+
+const queryClient = new QueryClient();
+
+export default function RootLayout() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    // Simulate loading resources or checking auth state
+    setTimeout(() => {
+      setReady(true);
+    }, 500);
+  }, []);
+
+  if (!ready) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaProvider>
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaView style={{ flex: 1 }}>
+          <DevDataBanner />
+          <Stack
+            screenOptions={{
+              headerStyle: {
+                backgroundColor: '#F9B24E',
+              },
+              headerTintColor: '#fff',
+            }}
+          >
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="(public)" options={{ headerShown: false }} />
+          </Stack>
+        </SafeAreaView>
+        <StatusBar style="auto" />
+      </QueryClientProvider>
+    </SafeAreaProvider>
+  );
+}

@@ -1,0 +1,58 @@
+BOOLEAN CASTING ERROR - FINAL RESOLUTION
+========================================
+
+ERROR
+-----
+java.lang.String cannot be cast to java.lang.Boolean
+
+ROOT CAUSE
+----------
+This error occurs when React Native native modules receive boolean props as strings instead of actual boolean values. Common causes:
+1. Android config properties (edgeToEdgeEnabled, predictiveBackGestureEnabled) causing issues
+2. react-native-screens creating views with improperly typed props
+3. Missing gesture-handler import at entry point
+
+FIXES APPLIED
+-------------
+1. Removed Android config properties:
+   - Removed edgeToEdgeEnabled from app.json
+   - Removed predictiveBackGestureEnabled from app.json
+   
+2. Added gesture-handler import:
+   - Added 'react-native-gesture-handler' import at top of index.js
+   - Added 'react-native-gesture-handler' import at top of app/_layout.tsx
+   - This ensures proper initialization before any navigation components
+
+3. Reinstalled dependencies:
+   - react-native-screens@~4.4.0
+   - react-native-gesture-handler@~2.20.0
+   - expo-dev-client (for better error handling)
+
+4. Cleaned build artifacts:
+   - Removed android/ and ios/ directories
+   - Cleared .expo cache
+   - Cleared node_modules/.cache
+
+ENTRY POINT SETUP
+-----------------
+index.js (entry point - MUST have gesture-handler first):
+import 'react-native-gesture-handler';
+import 'expo-router/entry';
+
+app/_layout.tsx (root layout - also import gesture-handler):
+import 'react-native-gesture-handler';
+import { Stack } from 'expo-router';
+// ... rest of imports
+
+VERIFICATION
+------------
+After these fixes:
+1. Server should start without errors
+2. App should load on emulator
+3. No boolean casting errors in logs
+
+If error persists:
+1. Check terminal logs for specific component causing issue
+2. Verify all boolean props use actual booleans (true/false), not strings ("true"/"false")
+3. Ensure gesture-handler is imported before any navigation components
+

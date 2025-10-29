@@ -1,0 +1,66 @@
+STORAGE.NATIVE.TS - NATIVE STORAGE IMPLEMENTATION
+=================================================
+
+PURPOSE
+-------
+Native storage implementation using Expo SecureStore for React Native mobile app.
+Provides secure storage for sensitive data like authentication tokens and user verification flags.
+
+KEY SANITIZATION
+----------------
+SecureStore has strict key requirements: only alphanumeric characters, ".", "-", and "_" are allowed.
+Email addresses and other strings containing special characters must be sanitized before use.
+
+sanitizeKey(key: string): string
+- Converts "@" to "_at_"
+- Converts "+" to "_plus_"  
+- Converts spaces to "_"
+- Converts all other invalid characters to "_"
+- Applied automatically to all storage operations
+
+Example:
+  Input: "user_verified_phone_email@domain.com"
+  Output: "user_verified_phone_email_at_domain.com"
+
+STORAGE API
+-----------
+All methods automatically sanitize keys before use:
+
+getItem(key: string): Promise<string | null>
+- Retrieves value from SecureStore
+- Returns null on error (key sanitized automatically)
+
+setItem(key: string, value: string): Promise<void>
+- Stores value in SecureStore
+- Silently fails on error (key sanitized automatically)
+
+removeItem(key: string): Promise<void>
+- Deletes value from SecureStore
+- Silently fails on error (key sanitized automatically)
+
+clear(): Promise<void>
+- Placeholder method (SecureStore doesn't support clear all)
+- In production, track keys and remove individually
+
+USAGE
+-----
+import { storage } from './storage';
+
+// Keys with special characters are automatically sanitized
+await storage.setItem('user_verified_phone_email@domain.com', 'true');
+await storage.getItem('user_verified_phone_email@domain.com'); // Works, key is sanitized
+
+ERROR HANDLING
+--------------
+All methods catch and log errors but don't throw:
+- getItem returns null on error
+- setItem/removeItem silently fail on error
+- Errors are logged to console for debugging
+
+FIXES IMPLEMENTED
+-----------------
+2025-10-29: Added key sanitization to fix SecureStore key validation errors
+- Email addresses in storage keys were causing "Invalid key" errors
+- sanitizeKey() function ensures all keys meet SecureStore requirements
+- Applied automatically to all storage operations (getItem, setItem, removeItem)
+

@@ -1,0 +1,75 @@
+MOBILE APP.JSON - CONFIGURATION DOCUMENTATION
+==============================================
+
+FILE: mobile/app.json
+LAST UPDATED: 2025-10-29
+
+OVERVIEW
+--------
+Expo configuration file for Enout Mobile app.
+Package: com.enout.mobile
+Version: 1.0.0
+
+EXPO CONFIGURATION
+------------------
+- name: Enout Mobile
+- slug: enout-mobile
+- version: 1.0.0
+- orientation: portrait
+- scheme: enout-mobile
+- userInterfaceStyle: light
+- newArchEnabled: false
+
+ASSETS
+------
+- icon: ./assets/icon.png
+- splash.image: ./assets/splash-icon.png
+- splash.resizeMode: contain
+- splash.backgroundColor: #F9B24E
+
+ANDROID CONFIGURATION
+---------------------
+- package: com.enout.mobile
+- versionCode: 1
+- edgeToEdgeEnabled: true
+- predictiveBackGestureEnabled: false
+- adaptiveIcon.foregroundImage: ./assets/adaptive-icon.png
+- adaptiveIcon.backgroundColor: #F9B24E
+
+IOS CONFIGURATION
+-----------------
+- bundleIdentifier: com.enout.mobile
+- supportsTablet: true
+
+PLUGINS
+-------
+1. expo-router - File-based routing
+2. expo-secure-store - Secure storage for tokens
+
+IMPORTANT NOTES
+---------------
+- react-native-reanimated/plugin is NOT in plugins array
+- Reanimated plugin must be ONLY in babel.config.js as last plugin
+- Having it in both locations causes Babel plugin errors
+
+FIXES APPLIED
+-------------
+2025-10-29:
+- Removed react-native-reanimated/plugin from plugins array
+- Plugin now only configured in babel.config.js (correct location)
+- This fixes "Cannot read properties of undefined (reading 'opts')" error
+
+WEB CONFIGURATION
+-----------------
+- favicon: ./assets/favicon.png
+
+BUILD CONFIGURATION
+-------------------
+For Android builds, this file is read by:
+- Expo CLI (development)
+- EAS Build (cloud builds)
+- Local builds via build-android.sh
+
+The configuration here is merged with babel.config.js and metro.config.js
+to create the complete app configuration.
+

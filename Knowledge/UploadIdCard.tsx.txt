@@ -1,0 +1,31 @@
+UPLOADIDCARD.TSX - ID DOCUMENT UPLOAD COMPONENT
+================================================
+
+PURPOSE
+-------
+React Native component for uploading ID documents with support for:
+- File picker (images and PDFs)
+- Camera photo capture
+- ID type selection dropdown
+- Upload progress tracking
+
+DOCUMENT PICKER PROTECTION
+---------------------------
+Prevents multiple simultaneous document picker calls which causes errors:
+"Different document picking in progress. Await other document picking first."
+
+Implementation:
+- isPickingDocument state flag tracks picker status
+- Guard checks at start of handlePickDocument and handleTakePhoto
+- Buttons disabled while picking is in progress
+- User feedback during picking operation
+
+FIXES IMPLEMENTED
+-----------------
+2025-10-29: Added document picker protection
+- Added isPickingDocument state to track picking status
+- Added guard checks to prevent simultaneous calls
+- Disabled buttons during picking operation
+- Added user feedback ("Opening file picker...") during operation
+- Applied same protection to both document picker and camera functions
+

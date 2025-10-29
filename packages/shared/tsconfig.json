@@ -1,0 +1,11 @@
+{
+  "extends": "@enout/tsconfig/base.json",
+  "compilerOptions": {
+    "baseUrl": "./src",
+    "paths": {
+      "@shared/*": ["*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

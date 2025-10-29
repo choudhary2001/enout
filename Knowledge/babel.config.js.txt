@@ -1,0 +1,57 @@
+BABEL.CONFIG.JS - CONFIGURATION DOCUMENTATION
+==============================================
+
+FILE: mobile/babel.config.js
+LAST UPDATED: 2025-10-29
+
+OVERVIEW
+--------
+Babel configuration for Expo/React Native mobile app transpilation.
+
+CONFIGURATION
+-------------
+Presets:
+- babel-preset-expo: Includes expo-router support (SDK 50+)
+
+Plugins:
+- react-native-reanimated/plugin: Must be last plugin (critical for Reanimated)
+
+IMPORTANT NOTES
+---------------
+- expo-router/babel plugin removed (deprecated in SDK 50+)
+- babel-preset-expo now includes expo-router support automatically
+- react-native-reanimated/plugin MUST be the last plugin in the array
+- Do NOT add expo-router/babel back - it's deprecated
+
+CHANGES MADE
+------------
+2025-10-29:
+- Removed 'expo-router/babel' from plugins array
+- Reason: Deprecated in favor of babel-preset-expo in SDK 50+
+- babel-preset-expo includes expo-router support by default
+- Kept react-native-reanimated/plugin as last plugin (required order)
+
+FULL CONFIG
+-----------
+module.exports = function (api) {
+    api.cache(true);
+    return {
+        presets: ['babel-preset-expo'],
+        plugins: [
+            'react-native-reanimated/plugin',
+        ],
+    };
+};
+
+BABEL PLUGIN ORDER
+------------------
+Critical: react-native-reanimated/plugin must be last
+Reason: Reanimated transforms code and must run after all other transforms
+
+TROUBLESHOOTING
+---------------
+If you see deprecation warnings:
+- Ensure expo-router/babel is NOT in plugins array
+- Ensure babel-preset-expo is in presets array
+- Clear Metro cache: rm -rf node_modules/.cache .expo
+

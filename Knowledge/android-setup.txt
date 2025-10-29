@@ -1,0 +1,111 @@
+ANDROID EMULATOR SETUP - TROUBLESHOOTING GUIDE
+==============================================
+
+ISSUE RESOLVED: Disk Space and Build Configuration
+Date: 2025-10-29
+
+PROBLEM
+-------
+1. "No space left on device" error during Android build
+2. Missing Android SDK Build-Tools 36 and Platform 36
+3. Unable to build native Android app due to disk constraints
+
+ROOT CAUSE
+----------
+- Disk is 98% full (only 4.5GB free out of 228GB)
+- Android build requires downloading ~2GB+ SDK components
+- Prebuild created config requiring SDK 36 (not installed)
+- Available: SDK 34 and build-tools 34.0.0
+
+SOLUTION IMPLEMENTED
+--------------------
+1. Removed native Android build directory (saves space)
+2. Cleaned Gradle caches (~997MB freed)
+3. Using Expo Go instead of native build (no SDK downloads needed)
+4. Expo server started in development mode
+
+HOW TO RUN ON ANDROID EMULATOR
+-------------------------------
+
+Method 1: Expo Go (Recommended - No Build Required)
+1. Install Expo Go on emulator:
+   - Open Google Play Store in emulator
+   - Search "Expo Go"
+   - Install the app
+   
+2. Start Expo server:
+   cd /Users/divakarchoudhary/Downloads/enout-main/mobile
+   npx expo start --android --clear
+
+3. In Expo Go app:
+   - Scan QR code from terminal
+   - Or enter expo:// URL manually
+   - App loads directly without build
+
+Method 2: Native Build (Requires Disk Space)
+1. Ensure minimum 10GB free disk space
+2. Install Android SDK Build-Tools 34 (already installed)
+3. Configure for SDK 34 instead of 36
+4. Run: npx expo prebuild --platform android --clean
+5. Run: npx expo run:android
+
+DISK SPACE MANAGEMENT
+---------------------
+Current Status:
+- Total: 228GB
+- Used: 203GB  
+- Free: 4.5GB (2%)
+- Gradle Cache: ~997MB (cleaned)
+
+Recommendations:
+1. Clean Android SDK caches: rm -rf ~/Library/Android/sdk/.temp
+2. Remove unused SDK platforms: Keep only needed versions
+3. Clean npm cache: npm cache clean --force
+4. Remove old Gradle versions: ~/.gradle/wrapper/dists/
+5. Clean Expo cache: rm -rf ~/.expo/cache
+
+INSTALLED COMPONENTS
+--------------------
+Android SDK:
+- Platform: android-34 (installed)
+- Build Tools: 34.0.0, 36.0.0 (both installed)
+- NDK: 27.1.12297006 (installing when needed)
+
+Emulator:
+- Device: Pixel_3a_API_34_extension_level_7_arm64-v8a
+- Status: Running
+- ADB: Connected (emulator-5554)
+
+EXPO CONFIGURATION
+------------------
+- Package: com.enout.mobile
+- Version: 1.0.0
+- Expo SDK: ~54.0.10
+- React Native: 0.81.5
+- Build: Development mode (Expo Go)
+
+WORKAROUND FOR DISK SPACE
+--------------------------
+Since disk space is limited, using Expo Go eliminates need for:
+- Native build compilation
+- Large SDK downloads
+- Gradle build artifacts
+- APK generation
+
+Trade-off: Requires Expo Go app on device (free, available on Play Store)
+
+ALTERNATIVE APPROACH
+-------------------
+If Expo Go isn't available:
+1. Free up at least 10GB disk space
+2. Modify android/build.gradle to use SDK 34 instead of 36
+3. Use build-tools 34.0.0 (already installed)
+4. Run native build with: npx expo run:android
+
+CURRENT STATUS
+--------------
+- Expo development server: Running
+- Android emulator: Running (Pixel_3a_API_34)
+- Connection: ADB connected
+- Next step: Install Expo Go and connect
+

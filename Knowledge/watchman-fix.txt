@@ -1,0 +1,61 @@
+WATCHMAN PERMISSION ERROR - FIX DOCUMENTATION
+==============================================
+
+ISSUE
+-----
+Error: std::__1::system_error: open: /Users/divakarchoudhary/Downloads/enout-main/mobile: Operation not permitted
+
+ROOT CAUSE
+----------
+macOS is blocking Watchman from accessing the project directory due to Full Disk Access permissions.
+
+SOLUTION OPTIONS
+----------------
+
+Option 1: Grant Full Disk Access (Recommended)
+1. Open System Settings > Privacy & Security > Full Disk Access
+2. Click the "+" button
+3. Navigate to and add:
+   - /usr/local/bin/watchman (if installed via Homebrew)
+   - /opt/homebrew/bin/watchman (if installed via Homebrew on Apple Silicon)
+   - /usr/local/Cellar/watchman/*/bin/watchman (Homebrew location)
+4. Restart Terminal and try again
+
+Option 2: Use Start Script (Quick Fix)
+Run: ./mobile/start-android.sh
+This script disables Watchman and starts Expo without it.
+
+Option 3: Environment Variable
+export CI=true
+export WATCHMAN_DISABLE=1
+npx expo start --android
+
+Option 4: Disable Watchman Service
+watchman shutdown-server
+Then ensure CI=true is set before starting Expo
+
+METRO CONFIG FIX
+----------------
+Updated metro.config.js to limit watchFolders to mobile directory only.
+This reduces the scope of file watching and may avoid permission issues.
+
+WATCHMANCONFIG FIX
+------------------
+Updated .watchmanconfig to ignore parent directories:
+{
+  "ignore_dirs": ["node_modules", "../apps", "../packages", "../infra", ".git"]
+}
+
+CURRENT STATUS
+--------------
+瓷器 Script created: mobile/start-android.sh
+- Metro config updated to limit watch scope
+- Watchmanconfig updated to ignore parent dirs
+- Watchman shutdown command included in script
+
+NEXT STEPS
+----------
+1. Run: cd mobile && ./start-android.sh
+2. Or grant Full Disk Access to Watchman in System Settings
+3. Expo will fall back to Node file watcher if Watchman is unavailable
+

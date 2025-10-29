@@ -1,0 +1,348 @@
+ENOUT MOBILE APP - TECHNICAL DOCUMENTATION
+==========================================
+
+OVERVIEW
+--------
+React Native mobile app built with Expo Router 6.x for event attendees.
+Package: com.enout.mobile
+Target Platforms: Android (APK), iOS (IPA)
+
+TECHNOLOGY STACK
+----------------
+- Expo SDK: ~54.0.10
+- React: 19.1.0
+- React Native: 0.81.4
+- Expo Router: ~6.0.8
+- State Management: Zustand, TanStack Query
+- Forms: React Hook Form + Zod validation
+- Storage: Expo Secure Store (tokens), AsyncStorage (user data)
+
+FILE STRUCTURE
+--------------
+mobile/
+  app/ - Expo Router app directory (file-based routing)
+    _layout.tsx - Root layout with QueryClientProvider
+    index.tsx - Splash/redirect screen
+    (public)/ - Public/unauthenticated routes
+      splash.tsx - Initial splash screen
+      email.tsx - Email entry for invitation
+      otp.tsx - OTP verification
+      tasks/ - Registration task flow
+        index.tsx - Task list
+        id.tsx - ID upload
+        form.tsx - Registration form
+        phone-input.tsx - Phone entry
+        phone.tsx - Phone OTP verification
+    (app)/ - Authenticated routes
+      inbox/ - Messages
+      schedule/ - Event schedule
+      profile/ - User profile
+  src/
+    components/ - Reusable components
+    lib/ - Core libraries
+      api.ts - API client wrapper
+      config.ts - API configuration
+      http.ts - HTTP client
+      storage.ts - Storage abstraction
+      useAuthGate.ts - Authentication flow logic
+  assets/ - Images, icons, splash screens
+
+AUTHENTICATION FLOW
+--------------------
+1. Splash screen redirects to email entry
+2. User enters email and receives invitation
+3. Email verified, proceed to OTP entry
+4. OTP verified, user lands on tasks screen
+5. Complete tasks (ID upload, form, phone verification)
+6. Phone verified via OTP in app
+7. All tasks complete, user enters authenticated app
+
+KEY COMPONENTS
+--------------
+
+TasksScreen:
+- Tracks task completion status
+- Integrates with backend API for profile data
+- Updates UI based on user progress
+- Prevents navigation to completed tasks
+
+PhoneOtpForm:
+- Handles phone number input with country code
+- Sends OTP via API
+- Verifies OTP and stores verification flag
+- User-specific verification tracking
+
+UploadIdCard:
+- Document picker integration
+- Image compression before upload
+- Progress indicator
+- Error handling and retry logic
+
+RegistrationForm:
+- Multi-step form with React Hook Form
+- Zod schema validation
+- Field-level error messages
+- Save and resume capability
+
+MessageCard:
+- Displays messages from event organizers
+- Mark as read functionality
+- Attachment display
+- Link handling
+
+ScheduleList:
+- Event schedule display
+- Session details modal
+- Date filtering
+- All-day event handling
+
+API INTEGRATION
+---------------
+Base URL: Configurable via EXPO_PUBLIC_API_URL
+Default: http://localhost:3003
+
+Endpoints:
+- POST /api/auth/otp/send - Send OTP to email
+- POST /api/auth/otp/verify - Verify OTP code
+- POST /api/auth/phone/request-otp - Request phone OTP
+- POST /api/auth/phone/verify-otp - Verify phone OTP
+- GET /api/events/{eventId}/profile - Get attendee profile
+- POST /api/events/{eventId}/upload-documents - Upload ID
+- GET /api/events/{eventId}/mobile-messages - Get messages
+- GET /api/events/{eventId}/schedule - Get schedule
+
+STORAGE MANAGEMENT
+---------------------
+Uses Expo Secure Store for sensitive data:
+- Authentication tokens
+- User email
+- User verification flags (phone verification status)
+
+Key Sanitization:
+- SecureStore keys are automatically sanitized to replace invalid characters
+- "@" is converted to "_at_", "+" to "_plus_", spaces to "_"
+- All other invalid characters are converted to "_"
+- Ensures compatibility with SecureStore key requirements (alphanumeric, ".", "-", "_" only)
+
+Storage abstraction layer:
+- storage.ts provides platform-specific implementation
+- storage.native.ts handles SecureStore with key sanitization
+- storage.web.ts uses localStorage (no sanitization needed)
+
+BUILD CONFIGURATION
+-------------------
+
+app.json:
+- Package: com.enout.mobile
+- Version: 1.0.0
+- Bundle ID: com.enout.mobile (iOS)
+- Splash background: #F9B24E
+- Icon: assets/icon.png
+- Adaptive icon: assets/adaptive-icon.png
+
+babel.config.js:
+- Expo preset
+- Expo Router plugin
+- React Native Reanimated plugin
+
+metro.config.js:
+- Default Expo Metro configuration
+
+eas.json:
+- Development profile with dev client
+- Preview profile with APK output (debug/preview builds)
+- Production profile with APK output (production APK)
+- Production-aab profile with app-bundle output (Play Store AAB)
+
+BUILDING FOR ANDROID
+---------------------
+
+METHOD 1 - Build Both APK and AAB (Recommended):
+1. Run: ./build-android-all.sh
+   Or: cd mobile && npm run build:all
+2. Outputs:
+   - APK: mobile/build-*.apk (Production APK)
+   - AAB: mobile/build-*.aab (Production AAB for Play Store)
+
+METHOD 2 - Build APK Only (Production):
+1. Run: cd mobile && npm run build:apk:prod
+   Or: cd mobile && eas build --platform android --profile production --local
+2. Output: mobile/build-*.apk
+
+METHOD 3 - Build AAB Only (For Play Store):
+1. Run: cd mobile && npm run build:aab
+   Or: cd mobile && eas build --platform android --profile production-aab --local
+2. Output: mobile/build-*.aab
+
+METHOD 4 - Remote EAS Build (Cloud):
+1. APK: cd mobile && eas build --platform android --profile production
+2. AAB: cd mobile && eas build --platform android --profile production-aab
+3. Download from: https://expo.dev/accounts/[your-account]/projects/enout-mobile/builds
+
+METHOD 5 - Development Build:
+1. Run: cd mobile && pnpm start
+2. Connect device via USB or scan QR with Expo Go
+
+PREREQUISITES:
+- EAS CLI installed: npm install -g eas-cli
+- Logged in: eas login
+- Local builds require Android SDK and build tools
+- Remote builds require Expo account (free tier available)
+
+DEPLOYMENT
+----------
+APK Distribution:
+- Direct download via website
+- OTA updates via Expo Updates
+- Email distribution
+
+Google Play Store:
+- Generate signed AAB
+- Upload to Play Console
+- Submit for review
+- Publish to production
+
+Environment Variables:
+- EXPO_PUBLIC_API_URL: API base URL
+- EXPO_PUBLIC_DEFAULT_EVENT_ID: Default event ID for testing
+
+KNOWN ISSUES FIXED
+------------------
+1. Boolean casting error (String cannot be cast to Boolean)
+   - Root Cause: Missing babel and metro configuration files
+   - Fixed: Added babel.config.js with Expo Router and Reanimated plugins
+   - Fixed: Added metro.config.js with default Expo Metro config
+   - Fixed: Added react-native-safe-area-context dependency (required by Expo)
+   - Fixed: Added react-native-reanimated plugin to app.json plugins array
+   - Fixed: Ensured all boolean props use proper boolean values not strings
+   
+2. Missing build configuration
+   - Fixed: Updated app.json with proper Android package (com.enout.mobile)
+   - Fixed: Added iOS bundle identifier (com.enout.mobile)
+   - Fixed: Created eas.json for EAS builds
+   - Fixed: Added build scripts to package.json
+   
+3. No APK build capability
+   - Fixed: Added build-android.sh script for local APK generation
+   - Fixed: Configured EAS build profiles (preview, production)
+   - Fixed: Added Android versionCode and package configuration
+
+4. Dependency version conflict (react-native-safe-area-context)
+   - Root Cause: react-native-safe-area-context@4.10.5 incompatible with expo-router@6.0.14 (requires >=5.4.0)
+   - Fixed: Updated package.json to use react-native-safe-area-context@^5.4.0
+   - Fixed: Installed dependencies using npm install --legacy-peer-deps
+   - Date: 2025-10-29
+
+5. Reanimated Babel plugin error
+   - Root Cause: react-native-reanimated/plugin configured in both babel.config.js AND app.json plugins array
+   - Error: TypeError: Cannot read properties of undefined (reading 'opts')
+   - Fixed: Removed react-native-reanimated/plugin from app.json plugins array
+   - Fixed: Kept plugin only in babel.config.js as last plugin (correct location)
+   - Date: 2025-10-29
+
+6. React Native Reanimated worklets plugin error
+   - Root Cause: react-native-reanimated@4.1.1 requires react-native-worklets/plugin which doesn't exist
+   - Error: [BABEL]: Cannot find module 'react-native-worklets/plugin'
+   - Fixed: Downgraded react-native-reanimated from ~4.1.1 to ~3.15.0 (compatible with Expo 54)
+   - Fixed: Removed react-native-worklets-core (not needed for v3)
+   - Date: 2025-10-29
+
+7. Watchman permission error
+   - Root Cause: Watchman cannot access parent directories (apps/api) due to macOS permissions
+   - Error: std::__1::system_error: open: Operation not permitted
+   - Fixed: Updated .watchmanconfig to ignore parent directories
+   - Fixed: Configured metro.config.js with explicit watchFolders to limit scope
+   - Fixed: Created start-android.sh script with Watchman disabled
+   - Date: 2025-10-29
+
+8. Port 8081 already in use error
+   - Root Cause: Previous Expo process still running on port 8081
+   - Error: Port 8081 is running this app in another window
+   - Fixed: Updated start-android.sh to kill existing processes before starting
+   - Fixed: Added port cleanup commands (lsof and pkill)
+   - Fixed: Added sleep delay to ensure clean startup
+   - Date: 2025-10-29
+
+9. Missing expo-linking package error
+   - Root Cause: expo-router requires expo-linking but it wasn't installed
+   - Error: Unable to resolve "expo-linking" from "expo-router/build/views/Unmatched.js"
+   - Fixed: Installed expo-linking@^8.0.8
+   - Date: 2025-10-29
+
+10. Deprecated expo-router/babel plugin warning
+   - Root Cause: expo-router/babel is deprecated in SDK 50+ in favor of babel-preset-expo
+   - Error: expo-router/babel is deprecated in favor of babel-preset-expo in SDK 50
+   - Fixed: Removed 'expo-router/babel' from babel.config.js plugins array
+   - Fixed: babel-preset-expo already includes expo-router support
+   - Date: 2025-10-29
+
+11. Missing react-native-screens package error
+   - Root Cause: @react-navigation/native-stack requires react-native-screens but it wasn't installed
+   - Error: Unable to resolve "react-native-screens" from "@react-navigation/native-stack"
+   - Fixed: Installed react-native-screens@~4.4.0
+   - Fixed: Installed react-native-gesture-handler@~2.20.0 (required dependency)
+   - Date: 2025-10-29
+
+12. String cannot be cast to Boolean error (Android)
+   - Root Cause: Boolean properties in app.json (edgeToEdgeEnabled, predictiveBackGestureEnabled) were causing native casting errors
+   - Error: java.lang.String cannot be cast to java.lang.Boolean
+   - Fixed: Removed edgeToEdgeEnabled and predictiveBackGestureEnabled from android section in app.json
+   - Fixed: Removed native build directories (android/ios) to force clean rebuild
+   - Fixed: Changed StatusBar style from "auto" to "light" in _layout.tsx
+   - Note: These properties can cause casting errors when Expo processes them for native builds
+   - Date: 2025-10-29
+
+13. SecureStore key validation error
+   - Root Cause: SecureStore requires keys to contain only alphanumeric characters, ".", "-", and "_". Email addresses in keys contain "@" which is invalid
+   - Error: Invalid key provided to SecureStore. Keys must not be empty and contain only alphanumeric characters, ".", "-", and "_"
+   - Fixed: Added sanitizeKey() function in storage.native.ts to convert "@" to "_at_", "+" to "_plus_", and spaces to "_"
+   - Fixed: All storage operations now automatically sanitize keys before use
+   - Impact: Storage keys like "user_verified_phone_email@domain.com" are now stored as "user_verified_phone_email_at_domain.com"
+   - Date: 2025-10-29
+
+14. Document picker multiple simultaneous calls error
+   - Root Cause: Multiple rapid taps on document picker button causing simultaneous calls to getDocumentAsync
+   - Error: Call to function 'ExpoDocumentPicker.getDocumentAsync' has been rejected. Caused by: Different document picking in progress. Await other document picking first.
+   - Fixed: Added isPickingDocument state flag to guard against multiple simultaneous calls
+   - Fixed: Added guard checks in both handlePickDocument and handleTakePhoto functions
+   - Fixed: Disabled buttons while document picking is in progress
+   - Fixed: Added user feedback ("Opening file picker...") during picking operation
+   - Date: 2025-10-29
+
+15. ScrollView not scrolling in tasks screen
+   - Root Cause: ScrollView missing contentContainerStyle, preventing proper scrolling behavior
+   - Fixed: Added contentContainerStyle with proper padding to ScrollView
+   - Fixed: Separated container style from content style (flex:1 for container, padding for content)
+   - Fixed: Added showsVerticalScrollIndicator for better UX
+   - Date: 2025-10-29
+
+PERFORMANCE OPTIMIZATIONS
+-------------------------
+1. Image compression before upload
+2. Lazy loading of screens
+3. Debounced API calls
+4. Optimistic UI updates
+5. Token refresh mechanism
+6. Background sync for messages
+
+TESTING
+-------
+Development Mode:
+- npm start or npx expo start - Start dev server
+- npx expo start --android - Start with Android target
+- Press 'a' for Android emulator
+- Press 'i' for iOS simulator
+- Press 'w' for web browser
+
+Physical Device:
+- Connect via USB
+- Enable USB debugging
+- Run: npm run android or npx expo start --android
+- Or scan QR code with Expo Go app on Android device
+
+APK Testing:
+- Install APK on device
+- Test authentication flow
+- Verify all features
+- Check offline behavior
+
