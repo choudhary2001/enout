@@ -1,0 +1,41 @@
+EAS.JSON - BUILD CONFIGURATION
+==============================
+
+FILE: mobile/eas.json
+LAST UPDATED: 2025-10-30
+
+OVERVIEW
+--------
+EAS Build profiles with environment configuration for local Android builds.
+
+KEY SETTINGS
+------------
+- cli.version: >= 5.2.0
+- appVersionSource: remote
+
+PROFILES
+--------
+- preview:
+  - android.buildType: apk
+
+- production:
+  - android.buildType: apk
+  - env:
+    - NODE_ENV=production
+    - ANDROID_HOME=/Users/divakarchoudhary/Library/Android/sdk
+
+- production-aab:
+  - android.buildType: app-bundle
+  - env:
+    - NODE_ENV=production
+    - ANDROID_HOME=/Users/divakarchoudhary/Library/Android/sdk
+
+RATIONALE
+---------
+- NDK pin handled in app.json plugin and build scripts only (not env), avoiding failures when NDK path missing.
+- Ensures CMake uses API level >=24 to satisfy expo-modules-core hermestooling.
+
+NOTES
+-----
+- Also configured in app.json via expo-build-properties: android.minSdkVersion=24, ndkVersion=26.1.10909125
+- Build scripts export ANDROID_NDK_HOME for robustness.

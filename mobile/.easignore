@@ -1,0 +1,25 @@
+node_modules/
+.expo/
+.expo-shared/
+dist/
+build/
+*.log
+.DS_Store
+.env.local
+.env.*.local
+android/
+ios/
+.git/
+.vscode/
+.idea/
+pnpm-lock.yaml
+pnpm-workspace.yaml
+
+# Exclude workspace files from parent
+../pnpm-workspace.yaml
+../pnpm-lock.yaml
+../turbo.json
+../packages/
+../apps/
+../infra/
+

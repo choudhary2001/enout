@@ -29,11 +29,22 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router",
       [
-        "expo-secure-store",
-        {}
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24,
+            "ndkVersion": "26.1.10909125"
+          }
+        }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "70fe7d38-d541-4e49-8885-27d2779df11d"
+      }
+    },
+    "owner": "divakarchoudhary"
   }
 }

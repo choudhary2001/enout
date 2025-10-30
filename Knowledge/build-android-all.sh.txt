@@ -1,0 +1,23 @@
+BUILD-ANDROID-ALL.SH - SCRIPT DOC
+=================================
+
+FILE: build-android-all.sh
+LAST UPDATED: 2025-10-30
+
+OVERVIEW
+--------
+Builds Android APK and AAB locally using EAS with environment checks.
+
+CHANGES
+-------
+- Installs NDK 26.1.10909125 via sdkmanager if available
+- Tries multiple sdkmanager locations: PATH, cmdline-tools/latest/bin, tools/bin
+- Exports ANDROID_NDK_HOME and ANDROID_NDK before build
+
+USAGE
+-----
+cd mobile && ../build-android-all.sh
+
+NOTES
+-----
+Pinning NDK to 26.1.10909125 avoids CMake API level mismatch and prefab errors.

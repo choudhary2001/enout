@@ -2,7 +2,7 @@ MOBILE APP.JSON - CONFIGURATION DOCUMENTATION
 ==============================================
 
 FILE: mobile/app.json
-LAST UPDATED: 2025-10-29
+LAST UPDATED: 2025-10-30 (enable Build Properties plugin with ndkVersion)
 
 OVERVIEW
 --------
@@ -31,8 +31,6 @@ ANDROID CONFIGURATION
 ---------------------
 - package: com.enout.mobile
 - versionCode: 1
-- edgeToEdgeEnabled: true
-- predictiveBackGestureEnabled: false
 - adaptiveIcon.foregroundImage: ./assets/adaptive-icon.png
 - adaptiveIcon.backgroundColor: #F9B24E
 
@@ -43,8 +41,9 @@ IOS CONFIGURATION
 
 PLUGINS
 -------
-1. expo-router - File-based routing
-2. expo-secure-store - Secure storage for tokens
+1. expo-build-properties
+   - android.minSdkVersion: 24
+   - android.ndkVersion: 26.1.10909125
 
 IMPORTANT NOTES
 ---------------
@@ -54,6 +53,11 @@ IMPORTANT NOTES
 
 FIXES APPLIED
 -------------
+2025-10-30:
+- Enabled React Native New Architecture (newArchEnabled: true)
+- Removed all plugins from app.json to avoid local EAS config plugin resolution errors
+- Build still targets minSdkVersion 24 via Expo defaults for SDK 54
+
 2025-10-29:
 - Removed react-native-reanimated/plugin from plugins array
 - Plugin now only configured in babel.config.js (correct location)

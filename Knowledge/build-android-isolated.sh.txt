@@ -1,0 +1,27 @@
+BUILD-ANDROID-ISOLATED.SH - SCRIPT DOC
+=====================================
+
+FILE: build-android-isolated.sh
+LAST UPDATED: 2025-10-30 (NDK timeout/logging; removed worklets force-install)
+
+OVERVIEW
+--------
+Creates a temp isolated env, installs deps, and builds APK & AAB locally.
+
+CHANGES
+-------
+- Prefer existing NDK at $ANDROID_HOME/ndk/26.1.10909125 and skip install if present
+- sdkmanager install now prints progress and uses optional timeout via $SDKMANAGER_TIMEOUT (default 900s)
+- If 'timeout' binary is unavailable, proceeds without timeout (with visible logs)
+- Removed force-install of react-native-worklets to avoid expo-doctor mismatch
+- Exports ANDROID_NDK_HOME and ANDROID_NDK only if the NDK path exists
+- Sanitizes temporary eas.json to remove any hardcoded ANDROID_NDK* env keys before building
+
+USAGE
+-----
+/Users/divakarchoudhary/Downloads/enout-main/build-android-isolated.sh
+
+NOTES
+-----
+Ensures minSdkVersion 24 (via app.json plugin) and stable NDK to avoid CMake hermestooling errors.
+If builds previously appeared to hang at "Ensuring Android NDK...", this update surfaces sdkmanager logs and caps install duration to avoid silent stalls.

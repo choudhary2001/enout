@@ -1,6 +1,7 @@
 {
     "cli": {
-        "version": ">= 5.2.0"
+        "version": ">= 5.2.0",
+        "appVersionSource": "remote"
     },
     "build": {
         "development": {
@@ -15,11 +16,19 @@
         "production": {
             "android": {
                 "buildType": "apk"
+            },
+            "env": {
+                "NODE_ENV": "production",
+                "ANDROID_HOME": "/Users/divakarchoudhary/Library/Android/sdk"
             }
         },
         "production-aab": {
             "android": {
                 "buildType": "app-bundle"
+            },
+            "env": {
+                "NODE_ENV": "production",
+                "ANDROID_HOME": "/Users/divakarchoudhary/Library/Android/sdk"
             }
         }
     },
